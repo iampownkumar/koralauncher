@@ -12,11 +12,10 @@ class AppTheme {
     return ThemeData(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: backgroundColor,
-      primaryColor: primaryColor,
-      colorScheme: const ColorScheme.dark(
-        primary: primaryColor,
-        background: backgroundColor,
-        surface: surfaceColor,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF6366F1),
+        brightness: Brightness.dark,
+        surface: const Color(0xFF0F172A),
       ),
       textTheme: GoogleFonts.interTextTheme(
         ThemeData.dark().textTheme,
@@ -27,10 +26,10 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceColor.withOpacity(0.5),
+        fillColor: const Color(0xFF0F172A).withValues(alpha: 0.8),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(24),
+          borderSide: const BorderSide(color: Colors.white10),
         ),
         hintStyle: const TextStyle(color: textSecondaryColor),
       ),

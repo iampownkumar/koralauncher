@@ -13,7 +13,7 @@ class StorageService {
   }
 
   static Future<void> toggleFlaggedApp(String packageName) async {
-    final apps = getFlaggedApps();
+    final apps = getFlaggedApps().toList();
     if (apps.contains(packageName)) {
       apps.remove(packageName);
     } else {
@@ -31,6 +31,20 @@ class StorageService {
     final currentLogs = _prefs.getStringList(key) ?? [];
     currentLogs.add('${DateTime.now().toIso8601String()}|$didOpen');
     await _prefs.setStringList(key, currentLogs);
+  }
+
+  static String? getDailyIntention() {
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    return _prefs.getString('intention_$today');
+  }
+
+  static Future<void> setDailyIntention(String intention) async {
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    await _prefs.setString('intention_$today', intention);
+  }
+
+  static bool hasSetIntentionToday() {
+    return getDailyIntention() != null;
   }
 }
 

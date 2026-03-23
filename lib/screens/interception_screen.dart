@@ -3,6 +3,7 @@ import 'package:installed_apps/app_info.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
+import '../widgets/micro_habit_suggestion.dart';
 
 class InterceptionScreen extends StatefulWidget {
   final AppInfo app;
@@ -17,8 +18,9 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   int _countdown = 3; // The Pause: 3 seconds
   Timer? _timer;
   bool _canOpen = false;
+  bool _showSuggestion = false;
 
-  late final String _selectedPrompt;
+  late String _selectedPrompt;
 
   @override
   void initState() {
@@ -75,7 +77,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
             children: [
               Center(
                 child: Hero(
-                  tag: widget.app.packageName!,
+                  tag: widget.app.packageName,
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: widget.app.icon != null 
@@ -85,58 +87,63 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
                 ),
               ),
               const SizedBox(height: 48),
-              Text(
-                _selectedPrompt,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 24, height: 1.4, color: Colors.white),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 64),
-              _buildChoiceButton(
-                title: "Not really, close",
-                isPrimary: true,
-                onTap: () async {
-                  await StorageService.logDecision(widget.app.packageName!, false);
-                  if (mounted) Navigator.pop(context);
-                },
-              ),
-              const SizedBox(height: 16),
-              _buildChoiceButton(
-                title: "Give me something else",
-                isPrimary: false,
-                onTap: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Breathe in for 4s, out for 6s.')),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
-              AnimatedOpacity(
-                duration: const Duration(milliseconds: 300),
-                opacity: _canOpen ? 1.0 : 0.5,
-                child: _canOpen 
-                  ? _buildChoiceButton(
-                      title: "Open anyway",
-                      isPrimary: false,
-                      isDestructive: true,
-                      onTap: () async {
-                        await StorageService.logDecision(widget.app.packageName!, true);
-                        InstalledApps.startApp(widget.app.packageName!);
-                        if (mounted) Navigator.pop(context);
-                      },
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Text(
-                        "Wait $_countdown...",
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.white54,
-                          fontWeight: FontWeight.bold,
+              if (!_showSuggestion) ...[
+                Text(
+                  _selectedPrompt,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 24, height: 1.4, color: Colors.white),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 64),
+                _buildChoiceButton(
+                  title: "Not really, close",
+                  isPrimary: true,
+                  onTap: () async {
+                    await StorageService.logDecision(widget.app.packageName, false);
+                    if (mounted) Navigator.pop(context);
+                  },
+                ),
+                const SizedBox(height: 16),
+                _buildChoiceButton(
+                  title: "Give me something else",
+                  isPrimary: false,
+                  onTap: () {
+                    setState(() {
+                      _showSuggestion = true;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 300),
+                  opacity: _canOpen ? 1.0 : 0.5,
+                  child: _canOpen 
+                    ? _buildChoiceButton(
+                        title: "Open anyway",
+                        isPrimary: false,
+                        isDestructive: true,
+                        onTap: () async {
+                          await StorageService.logDecision(widget.app.packageName, true);
+                          InstalledApps.startApp(widget.app.packageName);
+                          if (mounted) Navigator.pop(context);
+                        },
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Text(
+                          "Wait $_countdown...",
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.white54,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
-              ),
+                ),
+              ] else ...[
+                MicroHabitSuggestion(
+                  onDismiss: () => Navigator.pop(context),
+                ),
+              ],
             ],
           ),
         ),
