@@ -97,6 +97,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
                 _buildChoiceButton(
                   title: "Not really, close",
                   isPrimary: true,
+                  textStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                   onTap: () async {
                     await StorageService.logDecision(widget.app.packageName, false);
                     if (mounted) Navigator.pop(context);
@@ -155,6 +156,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
     required String title,
     required bool isPrimary,
     bool isDestructive = false,
+    TextStyle? textStyle,
     required VoidCallback onTap,
   }) {
     return ElevatedButton(
@@ -173,7 +175,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
       onPressed: onTap,
       child: Text(
         title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        style: textStyle ?? const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
       ),
     );
   }

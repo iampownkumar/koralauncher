@@ -6,6 +6,7 @@ class AppListItem extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onLongPress;
   final bool isFlagged;
+  final Duration usage;
 
   const AppListItem({
     super.key,
@@ -13,6 +14,7 @@ class AppListItem extends StatelessWidget {
     required this.onTap,
     required this.onLongPress,
     this.isFlagged = false,
+    this.usage = Duration.zero,
   });
 
   @override
@@ -69,6 +71,26 @@ class AppListItem extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (usage != Duration.zero) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                  ),
+                  child: Text(
+                    "${_formatUsage(usage)} today",
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               if (isFlagged)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -80,6 +102,8 @@ class AppListItem extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.pause_circle_outline, color: Theme.of(context).primaryColor, size: 16),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.star, color: Colors.amber, size: 12),
                       const SizedBox(width: 4),
                       Text(
                         "FLAGGED",
@@ -98,5 +122,9 @@ class AppListItem extends StatelessWidget {
         ),
       ),
     );
+  }
+  String _formatUsage(Duration d) {
+    if (d.inHours > 0) return "${d.inHours}h ${d.inMinutes.remainder(60)}m";
+    return "${d.inMinutes}m";
   }
 }

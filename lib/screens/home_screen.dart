@@ -1,10 +1,12 @@
-import 'package:installed_apps/app_info.dart';
-import 'package:installed_apps/installed_apps.dart';
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
-import 'interception_screen.dart';
-import '../widgets/app_list_item.dart';
+import '../services/launcher_service.dart';
+import '../services/usage_service.dart';
+import '../services/native_service.dart';
+import 'app_drawer_screen.dart';
 import '../widgets/intention_setter.dart';
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:android_intent_plus/flag.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,19 +15,51 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  List<AppInfo> _apps = [];
-  List<AppInfo> _filteredApps = [];
-  bool _isLoading = true;
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _showIntentionSetter = false;
-  final TextEditingController _searchController = TextEditingController();
+  bool _isDefaultLauncher = true; 
+  bool _hasUsagePermission = true;
+  String? _intention;
 
   @override
   void initState() {
     super.initState();
-    _loadApps();
+    WidgetsBinding.instance.addObserver(this);
+    _checkNativeState();
+    _loadInitialData();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.popUntil(context, (route) => route.isFirst);
+      }
+    }
+  }
+
+  Future<void> _checkNativeState() async {
+    final isDefault = await NativeService.isDefaultLauncher();
+    final hasUsage = await NativeService.hasUsagePermission();
+    if (mounted) {
+      setState(() {
+        _isDefaultLauncher = isDefault;
+        _hasUsagePermission = hasUsage;
+      });
+    }
+  }
+
+  Future<void> _loadInitialData() async {
+    await LauncherService.refreshApps();
+    await UsageService.refreshUsage();
     _checkIntention();
-    _searchController.addListener(_filterApps);
+    if (mounted) setState(() {});
   }
 
   void _checkIntention() {
@@ -33,148 +67,303 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _showIntentionSetter = true;
       });
-    }
-  }
-
-  Future<void> _loadApps() async {
-    List<AppInfo> apps = await InstalledApps.getInstalledApps(
-      excludeSystemApps: false,
-      withIcon: true,
-    );
-    
-    // Sort applications alphabetically
-    apps.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-
-    if (mounted) {
+    } else {
       setState(() {
-        _apps = apps;
-        _filteredApps = _apps;
-        _isLoading = false;
+        _intention = StorageService.getDailyIntention();
       });
     }
   }
 
-  void _filterApps() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      _filteredApps = _apps.where((app) {
-        return app.name.toLowerCase().contains(query);
-      }).toList();
+  void _openAppDrawer() {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const AppDrawerScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 1),
+              end: Offset.zero,
+            ).animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+              ),
+            ),
+            child: FadeTransition(
+              opacity: animation,
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
+    ).then((_) {
+      // Refresh on return in case settings/usage changed
+      _checkNativeState();
+      UsageService.refreshUsage().then((_) {
+        if (mounted) setState(() {});
+      });
     });
   }
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          SafeArea(
-            child: Column(
-              children: [
-                _buildIntentionHeader(),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-                  child: TextField(
-                    controller: _searchController,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                    decoration: const InputDecoration(
-                      hintText: 'Search apps...',
-                      prefixIcon: Icon(Icons.search, color: Colors.white54),
+    return PopScope(
+      canPop: false, // Prevent back button from exiting the launcher
+      child: Scaffold(
+        backgroundColor: Colors.transparent, // True launcher transparency!
+        body: Stack(
+          children: [
+          // Gesture Layer that spans the whole screen
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onVerticalDragEnd: (details) {
+              if (details.primaryVelocity != null && details.primaryVelocity! < -300) {
+                // Strong Swipe UP
+                _openAppDrawer();
+              }
+            },
+            child: SizedBox(
+              width: double.infinity,
+              height: double.infinity,
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    if (!_isDefaultLauncher) _buildDefaultLauncherBanner(),
+                    if (!_hasUsagePermission) _buildUsagePermissionBanner(),
+                    _buildTopInfoBar(),
+                    if (_intention != null && !_showIntentionSetter) _buildIntentionHeader(),
+                    const Spacer(),
+                    
+                    // Essential Shortcuts Dock
+                    _buildQuickAccessDock(),
+                    const SizedBox(height: 16),
+
+                    // Swipe up Hint
+                    GestureDetector(
+                      onTap: _openAppDrawer,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.keyboard_arrow_up, color: Colors.white60, size: 28),
+                          Text(
+                            "Swipe up or tap to search",
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.6),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-                Expanded(
-                  child: _isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : ListView.builder(
-                          itemCount: _filteredApps.length,
-                          physics: const BouncingScrollPhysics(),
-                          itemBuilder: (context, index) {
-                            final app = _filteredApps[index];
-                            final isFlagged = StorageService.isAppFlagged(app.packageName);
-                            return AppListItem(
-                              app: app,
-                              isFlagged: isFlagged,
-                              onTap: () {
-                                if (isFlagged) {
-                                  Navigator.push(
-                                    context,
-                                    PageRouteBuilder(
-                                      pageBuilder: (context, animation, secondaryAnimation) => 
-                                          InterceptionScreen(app: app),
-                                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                        return FadeTransition(opacity: animation, child: child);
-                                      },
-                                    ),
-                                  ).then((_) => setState(() {}));
-                                } else {
-                                  InstalledApps.startApp(app.packageName);
-                                }
-                              },
-                              onLongPress: () async {
-                                await StorageService.toggleFlaggedApp(app.packageName);
-                                if (mounted) setState(() {});
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      StorageService.isAppFlagged(app.packageName) 
-                                        ? '${app.name} is now flagged for interception.'
-                                        : '${app.name} is no longer flagged.',
-                                    ),
-                                    duration: const Duration(seconds: 2),
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                        ),
-                ),
-              ],
+              ),
             ),
           ),
+
+          // Overlays
           if (_showIntentionSetter)
             IntentionSetter(
               onIntentionSet: () {
                 setState(() {
                   _showIntentionSetter = false;
+                  _intention = StorageService.getDailyIntention();
                 });
               },
             ),
+        ],
+      ),
+    ));
+  }
+
+  Widget _buildTopInfoBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          if (_hasUsagePermission) _buildUsageStats(),
         ],
       ),
     );
   }
 
   Widget _buildIntentionHeader() {
-    final intention = StorageService.getDailyIntention();
-    if (intention == null) return const SizedBox.shrink();
-
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             "TODAY'S INTENTION",
             style: TextStyle(
-              color: Theme.of(context).primaryColor,
+              color: Colors.white.withValues(alpha: 0.7),
               letterSpacing: 2,
-              fontSize: 12,
+              fontSize: 10,
               fontWeight: FontWeight.bold,
+              shadows: const [Shadow(blurRadius: 10, color: Colors.black54)],
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            intention,
-            style: Theme.of(context).textTheme.displayLarge?.copyWith(fontSize: 24),
+            _intention!,
+            style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                  fontSize: 36,
+                  height: 1.2,
+                  fontWeight: FontWeight.w300,
+                  shadows: const [Shadow(blurRadius: 10, color: Colors.black54)],
+                ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildUsageStats() {
+    final totalUsage = UsageService.getTotalUsage();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.bar_chart, size: 16, color: Colors.white),
+          const SizedBox(width: 6),
+          Text(
+            UsageService.formatDuration(totalUsage),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDefaultLauncherBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      color: Colors.black.withValues(alpha: 0.6),
+      child: Row(
+        children: [
+          Icon(Icons.home, size: 18, color: Theme.of(context).primaryColor),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              "Kora is not default launcher",
+              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).primaryColor,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () {
+              const AndroidIntent intent = AndroidIntent(
+                action: 'android.settings.HOME_SETTINGS',
+                flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
+              );
+              intent.launch();
+            },
+              child: Text( "SET DEFAULT",
+              style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUsagePermissionBanner() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.show_chart, size: 24, color: Colors.white),
+          const SizedBox(width: 16),
+          const Expanded(
+            child: Text(
+              "Enable usage stats for insights",
+              style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              // foregroundColor: Colors.orange,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              await NativeService.openUsageSettings();
+            },
+            child: const Text("ENABLE", style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickAccessDock() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildShortcutIcon(
+            icon: Icons.phone,
+            onTap: () => const AndroidIntent(action: 'android.intent.action.DIAL').launch(),
+          ),
+          _buildShortcutIcon(
+            icon: Icons.message,
+            onTap: () => const AndroidIntent(action: 'android.intent.action.MAIN', category: 'android.intent.category.APP_MESSAGING').launch(),
+          ),
+          _buildShortcutIcon(
+            icon: Icons.language, // Browser
+            onTap: () => const AndroidIntent(action: 'android.intent.action.MAIN', category: 'android.intent.category.APP_BROWSER').launch(),
+          ),
+          _buildShortcutIcon(
+            icon: Icons.camera_alt,
+            onTap: () => const AndroidIntent(action: 'android.media.action.STILL_IMAGE_CAMERA').launch(),
+          ),
+          _buildShortcutIcon(
+            icon: Icons.image_outlined,
+            onTap: () => const AndroidIntent(action: 'android.intent.action.MAIN', category: 'android.intent.category.APP_GALLERY').launch(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShortcutIcon({required IconData icon, required VoidCallback onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: Colors.white, size: 28),
       ),
     );
   }

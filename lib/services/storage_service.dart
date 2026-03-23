@@ -46,5 +46,13 @@ class StorageService {
   static bool hasSetIntentionToday() {
     return getDailyIntention() != null;
   }
+
+  static bool isMinimalMode() {
+    return _prefs.getBool('minimal_mode') ?? false;
+  }
+
+  static Future<void> setMinimalMode(bool value) async {
+    await _prefs.setBool('minimal_mode', value);
+  }
 }
 

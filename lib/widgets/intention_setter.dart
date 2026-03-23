@@ -52,13 +52,13 @@ class _IntentionSetterState extends State<IntentionSetter> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               const Text(
                 "What is your intention for today?",
                 style: TextStyle(color: Colors.white70, fontSize: 16),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
               TextField(
                 controller: _controller,
                 autofocus: true,
@@ -72,7 +72,7 @@ class _IntentionSetterState extends State<IntentionSetter> {
                 ),
                 onSubmitted: (_) => _submit(),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _submit,
                 style: ElevatedButton.styleFrom(
