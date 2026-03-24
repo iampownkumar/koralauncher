@@ -4,15 +4,22 @@ import '../services/storage_service.dart';
 
 class IntentionSetter extends StatefulWidget {
   final VoidCallback onIntentionSet;
+  final String? initialIntention;
 
-  const IntentionSetter({super.key, required this.onIntentionSet});
+  const IntentionSetter({super.key, required this.onIntentionSet, this.initialIntention});
 
   @override
   State<IntentionSetter> createState() => _IntentionSetterState();
 }
 
 class _IntentionSetterState extends State<IntentionSetter> {
-  final TextEditingController _controller = TextEditingController();
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialIntention);
+  }
 
   @override
   void dispose() {

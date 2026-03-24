@@ -41,6 +41,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (mounted && Navigator.canPop(context)) {
         Navigator.popUntil(context, (route) => route.isFirst);
       }
+      _checkIntention();
     }
   }
 
@@ -70,6 +71,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     } else {
       setState(() {
         _intention = StorageService.getDailyIntention();
+        _showIntentionSetter = false;
       });
     }
   }
@@ -104,6 +106,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       UsageService.refreshUsage().then((_) {
         if (mounted) setState(() {});
       });
+      _checkIntention();
     });
   }
 
@@ -168,6 +171,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           // Overlays
           if (_showIntentionSetter)
             IntentionSetter(
+              initialIntention: _intention,
               onIntentionSet: () {
                 setState(() {
                   _showIntentionSetter = false;
@@ -195,10 +199,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildIntentionHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
+      child: GestureDetector(
+        onLongPress: () {
+          setState(() {
+            _showIntentionSetter = true;
+          });
+        },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
           Text(
             "TODAY'S INTENTION",
             style: TextStyle(
@@ -220,6 +230,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
           ),
         ],
+      ),
       ),
     );
   }
