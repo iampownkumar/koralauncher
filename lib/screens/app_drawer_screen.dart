@@ -56,6 +56,31 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
         return app.name.toLowerCase().contains(query);
       }).toList();
     });
+
+    // Auto-launch if there's exactly one result and query is not empty
+    if (_filteredApps.length == 1 && query.isNotEmpty) {
+      final app = _filteredApps.first;
+      final isFlagged = StorageService.isAppFlagged(app.packageName);
+      
+      if (isFlagged) {
+        Navigator.push(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => 
+                InterceptionScreen(app: app),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+          ),
+        ).then((_) {
+          _searchController.clear();
+        });
+      } else {
+        LauncherService.launchApp(app.packageName).then((_) {
+          _searchController.clear();
+        });
+      }
+    }
   }
 
   Future<void> _refreshData() async {
@@ -74,7 +99,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
     return GestureDetector(
       onVerticalDragEnd: (details) {
         // Swipe down to go back to home screen
-        if (details.primaryVelocity! > 0 && !_searchFocusNode.hasFocus) {
+        if (details.primaryVelocity! > 0) {
           Navigator.pop(context);
         }
       },

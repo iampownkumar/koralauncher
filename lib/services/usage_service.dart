@@ -1,6 +1,7 @@
 import 'package:app_usage/app_usage.dart';
 import 'dart:io';
 import 'native_service.dart';
+import 'launcher_service.dart';
 
 class UsageService {
   static List<AppUsageInfo> _usageInfos = [];
@@ -35,8 +36,14 @@ class UsageService {
 
   static Duration getTotalUsage() {
     Duration total = Duration.zero;
+    final cachedPackages = LauncherService.cachedApps.map((a) => a.packageName).toSet();
+
     for (var info in _usageInfos) {
-      total += info.usage;
+      // Exclude system apps not in launcher, and exclude the launcher itself
+      if (cachedPackages.contains(info.packageName) && 
+          !info.packageName.contains('koralauncher')) {
+        total += info.usage;
+      }
     }
     return total;
   }
