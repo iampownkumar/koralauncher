@@ -26,13 +26,6 @@ class StorageService {
     return getFlaggedApps().contains(packageName);
   }
 
-  static Future<void> logDecision(String packageName, bool didOpen) async {
-    final key = 'decision_$packageName';
-    final currentLogs = _prefs.getStringList(key) ?? [];
-    currentLogs.add('${DateTime.now().toIso8601String()}|$didOpen');
-    await _prefs.setStringList(key, currentLogs);
-  }
-
   static String? getDailyIntention() {
     final today = DateTime.now().toIso8601String().split('T')[0];
     return _prefs.getString('intention_$today');

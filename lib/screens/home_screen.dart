@@ -5,6 +5,8 @@ import '../services/usage_service.dart';
 import '../services/native_service.dart';
 import 'app_drawer_screen.dart';
 import '../widgets/intention_setter.dart';
+import '../widgets/live_clock.dart';
+import 'usage_dashboard_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
 
@@ -41,6 +43,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (mounted && Navigator.canPop(context)) {
         Navigator.popUntil(context, (route) => route.isFirst);
       }
+      _checkNativeState();
+      UsageService.refreshUsage().then((_) {
+        if (mounted) setState(() {});
+      });
       _checkIntention();
     }
   }
@@ -115,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return PopScope(
       canPop: false, // Prevent back button from exiting the launcher
       child: Scaffold(
-        backgroundColor: Colors.transparent, // True launcher transparency!
+        backgroundColor: Colors.black, // Solid black to fix recents wallpaper glitch
         body: Stack(
           children: [
           // Gesture Layer that spans the whole screen
@@ -127,6 +133,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 _openAppDrawer();
               }
             },
+            onHorizontalDragEnd: (details) {
+              final velocity = details.primaryVelocity;
+              if (velocity != null) {
+                if (velocity > 300) {
+                  // Horizontal Swipe Right -> Open Dashboard
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) => const UsageDashboardScreen(),
+                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        return FadeTransition(opacity: animation, child: child);
+                      },
+                    ),
+                  );
+                } else if (velocity < -300) {
+                  // Horizontal Swipe Left -> Reserved for future feature!
+                }
+              }
+            },
             child: SizedBox(
               width: double.infinity,
               height: double.infinity,
@@ -136,6 +161,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     if (!_isDefaultLauncher) _buildDefaultLauncherBanner(),
                     if (!_hasUsagePermission) _buildUsagePermissionBanner(),
                     _buildTopInfoBar(),
+
+                    // Live Precision Clock
+                    if (_intention != null && !_showIntentionSetter)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24.0),
+                        child: LiveClockWidget(),
+                      ),
+
                     if (_intention != null && !_showIntentionSetter) _buildIntentionHeader(),
                     const Spacer(),
                     
@@ -158,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 80), // Massive dead-zone to prevent mistaps on home swipe
                         ],
                       ),
                     ),
@@ -172,6 +205,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           if (_showIntentionSetter)
             IntentionSetter(
               initialIntention: _intention,
+              onDismiss: () {
+                setState(() {
+                  _showIntentionSetter = false;
+                });
+              },
               onIntentionSet: () {
                 setState(() {
                   _showIntentionSetter = false;
@@ -237,27 +275,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildUsageStats() {
     final totalUsage = UsageService.getTotalUsage();
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.bar_chart, size: 16, color: Colors.white),
-          const SizedBox(width: 6),
-          Text(
-            UsageService.formatDuration(totalUsage),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-            ),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => const UsageDashboardScreen(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
           ),
-        ],
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.bar_chart, size: 16, color: Colors.white),
+            const SizedBox(width: 6),
+            Text(
+              UsageService.formatDuration(totalUsage),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -324,8 +375,40 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               // foregroundColor: Colors.orange,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            onPressed: () async {
-              await NativeService.openUsageSettings();
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: const Color(0xFF1E293B),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  title: const Text("Usage Access Required", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  content: const Text(
+                    "Kora Launcher requires 'Usage Access' permission to monitor which apps you open and for how long.\n\n"
+                    "This allows the Rising Tide system to intercept habit-building apps, measure your screen time accurately, and help you reduce distractions.\n\n"
+                    "Your usage data strictly stays on your device and is never sent to any servers.",
+                    style: TextStyle(color: Colors.white70, height: 1.4),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await NativeService.openUsageSettings();
+                      },
+                      child: const Text("I Understand", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                    ),
+                  ],
+                ),
+              );
             },
             child: const Text("ENABLE", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
@@ -345,6 +428,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             onTap: () => const AndroidIntent(action: 'android.intent.action.DIAL').launch(),
           ),
           _buildShortcutIcon(
+
+
+
+            
             icon: Icons.message,
             onTap: () => const AndroidIntent(action: 'android.intent.action.MAIN', category: 'android.intent.category.APP_MESSAGING').launch(),
           ),

@@ -1,4 +1,4 @@
-package com.example.koralauncher
+package org.korelium.koralauncher
 
 import android.app.AppOpsManager
 import android.content.Context
@@ -15,7 +15,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity: FlutterActivity() {
-    private val CHANNEL = "com.example.koralauncher/native"
+    private val CHANNEL = "com.koralauncher.app/native"
 
     override fun getTransparencyMode(): TransparencyMode {
         return TransparencyMode.transparent
@@ -61,6 +61,13 @@ class MainActivity: FlutterActivity() {
     }
 
     private fun openUsageSettings() {
-        startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+        try {
+            val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            intent.data = android.net.Uri.parse("package:$packageName")
+            startActivity(intent)
+        } catch (e: Exception) {
+            // Fallback for older devices or OEMs that don't support the package URI
+            startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+        }
     }
 }

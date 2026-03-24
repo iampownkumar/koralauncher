@@ -1,8 +1,7 @@
 import 'package:flutter/services.dart';
 
 class NativeService {
-  static const platform = MethodChannel('com.example.koralauncher/native');
-
+static const platform = MethodChannel('com.koralauncher.app/native');
   static Future<bool> isDefaultLauncher() async {
     try {
       final bool result = await platform.invokeMethod('isDefaultLauncher');

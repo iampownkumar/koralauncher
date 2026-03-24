@@ -1,5 +1,6 @@
 import 'package:app_usage/app_usage.dart';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'native_service.dart';
 import 'launcher_service.dart';
 
@@ -20,8 +21,8 @@ class UsageService {
       
       List<AppUsageInfo> infoList = await AppUsage().getAppUsage(startDate, endDate);
       _usageInfos = infoList;
-    } catch (exception) {
-      print("UsageService Exception: $exception");
+    } catch (exception, stackTrace) {
+      debugPrint("UsageService Exception: $exception\n$stackTrace");
     }
   }
 

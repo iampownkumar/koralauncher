@@ -1,12 +1,14 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
+import '../database/database_provider.dart';
 
 class IntentionSetter extends StatefulWidget {
   final VoidCallback onIntentionSet;
+  final VoidCallback? onDismiss;
   final String? initialIntention;
 
-  const IntentionSetter({super.key, required this.onIntentionSet, this.initialIntention});
+  const IntentionSetter({super.key, required this.onIntentionSet, this.onDismiss, this.initialIntention});
 
   @override
   State<IntentionSetter> createState() => _IntentionSetterState();
@@ -30,7 +32,19 @@ class _IntentionSetterState extends State<IntentionSetter> {
   void _submit() async {
     if (_controller.text.trim().isNotEmpty) {
       await StorageService.setDailyIntention(_controller.text.trim());
+      await db.saveIntention(_controller.text.trim()); 
       widget.onIntentionSet();
+    }
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      return "Good Morning.";
+    } else if (hour < 17) {
+      return "Good Afternoon.";
+    } else {
+      return "Good Evening.";
     }
   }
 
@@ -52,10 +66,10 @@ class _IntentionSetterState extends State<IntentionSetter> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                "Good Morning.",
+                _getGreeting(),
                 style: Theme.of(context).textTheme.displayLarge?.copyWith(
                   fontSize: 28,
-                  color: Theme.of(context).primaryColor,
+                  color: Colors.white,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -83,15 +97,22 @@ class _IntentionSetterState extends State<IntentionSetter> {
               ElevatedButton(
                 onPressed: _submit,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
+                  backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text("Set Intention", style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text("Set Intention", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
               ),
+              if (widget.onDismiss != null) ...[
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: widget.onDismiss,
+                  child: const Text("Skip for now", style: TextStyle(color: Colors.white60)),
+                ),
+              ],
             ],
           ),
         ),

@@ -1,8 +1,8 @@
-import 'dart:async';
 import 'package:installed_apps/app_info.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:flutter/material.dart';
-import '../services/storage_service.dart';
+import '../services/native_service.dart';
+import '../database/database_provider.dart';
 import '../widgets/micro_habit_suggestion.dart';
 
 class InterceptionScreen extends StatefulWidget {
@@ -15,54 +15,9 @@ class InterceptionScreen extends StatefulWidget {
 }
 
 class _InterceptionScreenState extends State<InterceptionScreen> {
-  int _countdown = 3; // The Pause: 3 seconds
-  Timer? _timer;
-  bool _canOpen = false;
+  bool _reasonSelected = false;
   bool _showSuggestion = false;
-
-  late String _selectedPrompt;
-
-  @override
-  void initState() {
-    super.initState();
-    final prompts = [
-      "You just opened ${widget.app.name}.\nWhat are you looking for right now?",
-      "Is opening ${widget.app.name}\nwhat you really need right now?",
-      "Take a breath.\nDo you want to continue to ${widget.app.name}?",
-    ];
-    _selectedPrompt = prompts[DateTime.now().second % prompts.length];
-    _startPause();
-  }
-
-  void _startPause() {
-    // Night Mode Check (Problem 9)
-    final hour = DateTime.now().hour;
-    if (hour >= 22 || hour < 5) {
-      _countdown = 10; // Stronger friction at night
-      _selectedPrompt = "It's late. Do you really need ${widget.app.name} right now?";
-    }
-
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) return;
-      if (_countdown > 1) {
-        setState(() {
-          _countdown--;
-        });
-      } else {
-        setState(() {
-          _canOpen = true;
-          _countdown = 0;
-        });
-        _timer?.cancel();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
+  String? _selectedReason;
 
   @override
   Widget build(BuildContext context) {
@@ -89,57 +44,94 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
               const SizedBox(height: 48),
               if (!_showSuggestion) ...[
                 Text(
-                  _selectedPrompt,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontSize: 24, height: 1.4, color: Colors.white),
+                  _reasonSelected ? "You chose: $_selectedReason" : "Why are you opening ${widget.app.name}?",
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontSize: 24, height: 1.4, color: Colors.white,
+                  ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 64),
-                _buildChoiceButton(
-                  title: "Not really, close",
-                  isPrimary: true,
-                  textStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                  onTap: () async {
-                    await StorageService.logDecision(widget.app.packageName, false);
-                    if (mounted) Navigator.pop(context);
-                  },
-                ),
-                const SizedBox(height: 16),
-                _buildChoiceButton(
-                  title: "Give me something else",
-                  isPrimary: false,
-                  onTap: () {
-                    setState(() {
-                      _showSuggestion = true;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                AnimatedOpacity(
-                  duration: const Duration(milliseconds: 300),
-                  opacity: _canOpen ? 1.0 : 0.5,
-                  child: _canOpen 
-                    ? _buildChoiceButton(
-                        title: "Open anyway",
-                        isPrimary: false,
-                        isDestructive: true,
-                        onTap: () async {
-                          await StorageService.logDecision(widget.app.packageName, true);
-                          InstalledApps.startApp(widget.app.packageName);
-                          if (mounted) Navigator.pop(context);
-                        },
-                      )
-                    : Padding(
-                        padding: const EdgeInsets.all(20.0),
-                        child: Text(
-                          "Wait $_countdown...",
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.white54,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                ),
+                const SizedBox(height: 48),
+
+                if (!_reasonSelected) ...[
+                  _buildChoiceButton(
+                    title: "Habit / Boredom",
+                    isPrimary: false,
+                    onTap: () => setState(() {
+                      _reasonSelected = true;
+                      _selectedReason = "Habit / Boredom";
+                    }),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildChoiceButton(
+                    title: "Quick Task",
+                    isPrimary: false,
+                    onTap: () => setState(() {
+                      _reasonSelected = true;
+                      _selectedReason = "Quick Task";
+                    }),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildChoiceButton(
+                    title: "Important Work",
+                    isPrimary: false,
+                    onTap: () => setState(() {
+                      _reasonSelected = true;
+                      _selectedReason = "Important Work";
+                    }),
+                  ),
+                ] else ...[
+                  // Once reason is selected, show final choices
+                  _buildChoiceButton(
+                    title: "Never mind, close",
+                    isPrimary: true,
+                    textStyle: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 16),
+                    onTap: () async {
+                      if (_selectedReason == null) return;
+                      try {
+                        await db.logDecision(
+                          packageName: widget.app.packageName,
+                          reason: _selectedReason!,
+                          opened: false,
+                          resistedCompletely: true,
+                        );
+                      } catch (e) {
+                        debugPrint('Database error: $e');
+                      }
+                      if (mounted) Navigator.pop(context);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _buildChoiceButton(
+                    title: "Give me something else",
+                    isPrimary: false,
+                    onTap: () {
+                      setState(() {
+                        _showSuggestion = true;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _buildChoiceButton(
+                    title: "Open anyway",
+                    isPrimary: false,
+                    isDestructive: true,
+                    onTap: () async {
+                      if (_selectedReason == null) return;
+                      try {
+                        await db.logDecision(
+                          packageName: widget.app.packageName,
+                          reason: _selectedReason!,
+                          opened: true,
+                        );
+                        await db.startSession(widget.app.packageName, widget.app.name);
+                      } catch (e) {
+                        debugPrint('Database error: $e');
+                      }
+                      InstalledApps.startApp(widget.app.packageName);
+                      if (mounted) Navigator.pop(context);
+                    },
+                  ),
+                ],
               ] else ...[
                 MicroHabitSuggestion(
                   onDismiss: () => Navigator.pop(context),
@@ -163,7 +155,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
       style: ElevatedButton.styleFrom(
         foregroundColor: isPrimary ? Colors.black : Colors.white,
         backgroundColor: isPrimary 
-          ? Theme.of(context).primaryColor 
+          ? Colors.white 
           : (isDestructive ? Colors.transparent : const Color(0xFF1E293B)),
         elevation: isPrimary ? 2 : 0,
         shape: RoundedRectangleBorder(

@@ -44,7 +44,9 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
     final hasUsage = await NativeService.hasUsagePermission();
     setState(() {
       _hasUsagePermission = hasUsage;
-      _apps = LauncherService.cachedApps;
+      _apps = LauncherService.cachedApps
+          .where((app) => !app.packageName.contains('koralauncher'))
+          .toList();
       _filteredApps = _apps;
     });
   }
@@ -88,7 +90,9 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
     await UsageService.refreshUsage();
     if (mounted) {
       setState(() {
-        _apps = LauncherService.cachedApps;
+        _apps = LauncherService.cachedApps
+            .where((app) => !app.packageName.contains('koralauncher'))
+            .toList();
         _filterApps();
       });
     }
@@ -104,10 +108,10 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.black, // Solid dark background to fix recents glitch
         body: Stack(
           children: [
-            // Dark Blur Background for premium feel
+            // Dark Blur Background for premium feel over the list items as they scroll
             BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
               child: Container(
