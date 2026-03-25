@@ -48,6 +48,12 @@ class UsageService {
     return Duration.zero;
   }
 
+  static int _roundedMinutes(Duration duration) {
+    // Round half-up to match typical "screen time" rounding in dashboards.
+    // Digital Wellbeing usually rounds to the nearest minute (not floor).
+    return (duration.inMilliseconds + 30000) ~/ 60000;
+  }
+
   static const Set<String> _ignoredPackages = {
     'com.miui.home',
     'com.google.android.apps.nexuslauncher',
@@ -64,6 +70,25 @@ class UsageService {
     'com.google.android.gms',
     'com.android.providers.media.module',
   };
+
+  static bool shouldCountPackage(String packageName) {
+    if (packageName.contains('koralauncher')) return false;
+    return !_ignoredPackages.contains(packageName);
+  }
+
+  static Duration getVisibleTotalUsage({int minRoundedMinutes = 1}) {
+    int totalMinutes = 0;
+    for (final app in LauncherService.cachedApps) {
+      if (!shouldCountPackage(app.packageName)) continue;
+
+      final usageMs = getAppUsage(app.packageName).inMilliseconds;
+      final roundedMinutes = (usageMs + 30000) ~/ 60000; // round half-up
+      if (roundedMinutes >= minRoundedMinutes) {
+        totalMinutes += roundedMinutes;
+      }
+    }
+    return Duration(minutes: totalMinutes);
+  }
 
   static Duration getTotalUsage() {
     Duration total = Duration.zero;
@@ -90,13 +115,12 @@ class UsageService {
   }
 
   static String formatDuration(Duration duration) {
-    if (duration == Duration.zero) return "0m";
-    int hours = duration.inHours;
-    int minutes = duration.inMinutes.remainder(60);
-    
-    if (hours > 0) {
-      return "${hours}h ${minutes}m";
-    }
+    final totalMinutes = _roundedMinutes(duration);
+    if (totalMinutes <= 0) return "0m";
+
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    if (hours > 0) return "${hours}h ${minutes}m";
     return "${minutes}m";
   }
 }

@@ -67,17 +67,50 @@ class MainActivity: FlutterActivity() {
     }
 
     private fun getRawUsageStats(startTime: Long, endTime: Long): Map<String, Long> {
-        val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
-        val stats = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
+        val usageStatsManager =
+            getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
+
+        // Digital Wellbeing typically attributes time using UsageEvents.
+        // queryAndAggregateUsageStats can drift (especially around day boundaries / activity transitions),
+        // which can cause "Firefox today" to show time even when you didn't open it today.
         val usageMap = mutableMapOf<String, Long>()
-        
-        for (usageStat in stats.values) {
-            val totalTime = usageStat.totalTimeInForeground
-            if (totalTime > 0) {
-                usageMap[usageStat.packageName] = totalTime
+        val startTimesMsByPackage = mutableMapOf<String, Long>()
+
+        val events = usageStatsManager.queryEvents(startTime, endTime)
+        val event = android.app.usage.UsageEvents.Event()
+
+        var lastForegroundPackage: String? = null
+        var lastForegroundStartMs: Long = 0L
+
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            val pkg = event.packageName ?: continue
+
+            when (event.eventType) {
+                android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND -> {
+                    startTimesMsByPackage[pkg] = event.timeStamp
+                    lastForegroundPackage = pkg
+                    lastForegroundStartMs = event.timeStamp
+                }
+                android.app.usage.UsageEvents.Event.MOVE_TO_BACKGROUND -> {
+                    val startMs = startTimesMsByPackage.remove(pkg) ?: continue
+                    val deltaMs = event.timeStamp - startMs
+                    if (deltaMs > 0) {
+                        usageMap[pkg] = (usageMap[pkg] ?: 0L) + deltaMs
+                    }
+                }
             }
         }
-        
+
+        // If something stayed in foreground until the query end, count it up to endTime.
+        lastForegroundPackage?.let { pkg ->
+            val startMs = startTimesMsByPackage[pkg] ?: lastForegroundStartMs
+            val deltaMs = endTime - startMs
+            if (deltaMs > 0) {
+                usageMap[pkg] = (usageMap[pkg] ?: 0L) + deltaMs
+            }
+        }
+
         return usageMap
     }
 

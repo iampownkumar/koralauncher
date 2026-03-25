@@ -8,6 +8,15 @@ class StorageService {
     _prefs = await SharedPreferences.getInstance();
   }
 
+  static String _localDayKey(DateTime now) {
+    // Digital Wellbeing uses device local time for day boundaries.
+    // Avoid UTC date strings from `toIso8601String()`, which can shift the day.
+    final y = now.year;
+    final m = now.month.toString().padLeft(2, '0');
+    final d = now.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
   static List<String> getFlaggedApps() {
     return _prefs.getStringList(_flaggedAppsKey) ?? [];
   }
@@ -27,12 +36,12 @@ class StorageService {
   }
 
   static String? getDailyIntention() {
-    final today = DateTime.now().toIso8601String().split('T')[0];
+    final today = _localDayKey(DateTime.now());
     return _prefs.getString('intention_$today');
   }
 
   static Future<void> setDailyIntention(String intention) async {
-    final today = DateTime.now().toIso8601String().split('T')[0];
+    final today = _localDayKey(DateTime.now());
     await _prefs.setString('intention_$today', intention);
   }
 

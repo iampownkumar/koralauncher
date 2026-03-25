@@ -286,7 +286,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildUsageStats() {
-    final totalUsage = UsageService.getTotalUsage();
+    // Keep home "overall usage" consistent with the dashboard list filtering.
+    final totalUsage = UsageService.getVisibleTotalUsage(minRoundedMinutes: 1);
     return GestureDetector(
       onTap: () {
         Navigator.push(

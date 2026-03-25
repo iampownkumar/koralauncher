@@ -19,9 +19,9 @@ class _TodoListWidgetState extends State<TodoListWidget> {
     _todos = StorageService.getTodos();
     _states = StorageService.getTodoStates().map((e) => e == 'true').toList();
     
-    // Ensure lists are always size 4
-    while (_todos.length < 4) _todos.add('');
-    while (_states.length < 4) _states.add(false);
+    // Ensure lists are always size 3
+    while (_todos.length < 3) _todos.add('');
+    while (_states.length < 3) _states.add(false);
 
     _controllers = _todos.map((text) => TextEditingController(text: text)).toList();
   }
@@ -47,7 +47,7 @@ class _TodoListWidgetState extends State<TodoListWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          ...List.generate(4, (index) => _buildTodoItem(index)),
+          ...List.generate(3, (index) => _buildTodoItem(index)),
         ],
       ),
     );

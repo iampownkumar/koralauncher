@@ -124,7 +124,13 @@ class AppListItem extends StatelessWidget {
     );
   }
   String _formatUsage(Duration d) {
-    if (d.inHours > 0) return "${d.inHours}h ${d.inMinutes.remainder(60)}m";
-    return "${d.inMinutes}m";
+    final totalMinutes = (d.inMilliseconds + 30000) ~/ 60000; // round half-up
+    if (totalMinutes <= 0) return "0m";
+
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+
+    if (hours > 0) return "${hours}h ${minutes}m";
+    return "${minutes}m";
   }
 }

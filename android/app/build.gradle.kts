@@ -3,10 +3,9 @@ import java.util.Properties
 
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
-if (keystorePropertiesFile.exists()) {
+val hasKeystoreProperties = keystorePropertiesFile.exists()
+if (hasKeystoreProperties) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-} else {
-    throw GradleException("Could not find key.properties at ${keystorePropertiesFile.absolutePath}")
 }
 
 plugins {
@@ -43,18 +42,48 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String? ?: throw GradleException("keyAlias is missing from key.properties")
-            keyPassword = keystoreProperties["keyPassword"] as String? ?: throw GradleException("keyPassword is missing from key.properties")
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) } ?: throw GradleException("storeFile is missing from key.properties")
-            storePassword = keystoreProperties["storePassword"] as String? ?: throw GradleException("storePassword is missing from key.properties")
+            if (!hasKeystoreProperties) {
+                // Allow local --release builds without a release keystore.
+                // Proper signing will still happen in CI / on machines with key.properties.
+                return@create
+            }
+
+            val keyAliasProp = keystoreProperties["keyAlias"] as String?
+            val keyPasswordProp = keystoreProperties["keyPassword"] as String?
+            val storeFileProp = keystoreProperties["storeFile"] as String?
+            val storePasswordProp = keystoreProperties["storePassword"] as String?
+
+            if (keyAliasProp.isNullOrBlank() ||
+                keyPasswordProp.isNullOrBlank() ||
+                storeFileProp.isNullOrBlank() ||
+                storePasswordProp.isNullOrBlank()
+            ) {
+                // Missing or incomplete config: fall back to debug signing.
+                return@create
+            }
+
+            val resolvedStoreFile = file(storeFileProp)
+            if (!resolvedStoreFile.exists()) {
+                // Keystore file missing: fall back to debug signing.
+                return@create
+            }
+
+            keyAlias = keyAliasProp
+            keyPassword = keyPasswordProp
+            storeFile = resolvedStoreFile
+            storePassword = storePasswordProp
         }
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with actual release keys now.
-            signingConfig = signingConfigs.getByName("release")
+            // Use release keystore when available, otherwise allow local builds with debug signing.
+            val releaseStoreFile = signingConfigs.getByName("release").storeFile
+            signingConfig = if (releaseStoreFile != null && releaseStoreFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

@@ -17,6 +17,20 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
   List<AppInfo> _sortedApps = [];
   bool _isLoading = true;
 
+  int _roundedMinutesForApp(String packageName) {
+    final usageMs = UsageService.getAppUsage(packageName).inMilliseconds;
+    // Keep rounding logic identical to the list filter above (rounded half-up).
+    return (usageMs + 30000) ~/ 60000;
+  }
+
+  Duration _computeTotalFromVisibleApps() {
+    final totalMinutes = _sortedApps.fold<int>(
+      0,
+      (sum, app) => sum + _roundedMinutesForApp(app.packageName),
+    );
+    return Duration(minutes: totalMinutes);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -42,7 +56,13 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
 
     if (mounted) {
       setState(() {
-        _sortedApps = apps.where((app) => UsageService.getAppUsage(app.packageName).inMilliseconds > 0).toList();
+        // Match Digital Wellbeing behavior: show anything with at least 1 rounded minute.
+        _sortedApps = apps.where((app) {
+          if (!UsageService.shouldCountPackage(app.packageName)) return false;
+          final usageMs = UsageService.getAppUsage(app.packageName).inMilliseconds;
+          final roundedMinutes = (usageMs + 30000) ~/ 60000; // round half-up
+          return roundedMinutes >= 1;
+        }).toList();
         _isLoading = false;
       });
     }
@@ -50,7 +70,9 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final totalUsage = UsageService.getTotalUsage();
+    // Keep TOTAL SCREEN TIME consistent with what we display in the list:
+    // same rounded-minute rule, same visible app set.
+    final totalUsage = _computeTotalFromVisibleApps();
     
     return GestureDetector(
       onHorizontalDragEnd: (details) {
