@@ -89,13 +89,13 @@ class _TodoListWidgetState extends State<TodoListWidget> {
               },
               style: TextStyle(
                 color: _states[index] ? Colors.white.withValues(alpha: 0.4) : Colors.white,
-                fontSize: 15,
+                fontSize: 18,
                 decoration: _states[index] ? TextDecoration.lineThrough : null,
                 decorationColor: Colors.white.withValues(alpha: 0.4),
               ),
               decoration: InputDecoration(
                 hintText: "Add a task...",
-                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2), fontSize: 14),
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2), fontSize: 16),
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,

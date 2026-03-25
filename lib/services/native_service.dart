@@ -27,4 +27,25 @@ static const platform = MethodChannel('com.koralauncher.app/native');
       print("Failed to open usage settings.");
     }
   }
+
+  static Future<void> openDefaultLauncherSettings() async {
+    try {
+      await platform.invokeMethod('openDefaultLauncherSettings');
+    } catch (e) {
+      print("Failed: $e");
+    }
+  }
+
+  static Future<Map<String, int>> getAccurateUsageStats(int startTime, int endTime) async {
+    try {
+      final Map<dynamic, dynamic>? result = await platform.invokeMethod('getAccurateUsageStats', {
+        'startTime': startTime,
+        'endTime': endTime,
+      });
+      if (result == null) return {};
+      return result.map((key, value) => MapEntry(key.toString(), int.parse(value.toString())));
+    } catch (e) {
+      return {};
+    }
+  }
 }

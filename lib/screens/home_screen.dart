@@ -5,7 +5,6 @@ import '../services/usage_service.dart';
 import '../services/native_service.dart';
 import 'app_drawer_screen.dart';
 import '../widgets/intention_setter.dart';
-import '../widgets/live_clock.dart';
 import '../widgets/todo_list_widget.dart';
 import 'usage_dashboard_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
@@ -20,7 +19,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _showIntentionSetter = false;
-  bool _isDefaultLauncher = true; 
+  bool _isDefaultLauncher = true;
   bool _hasUsagePermission = true;
   String? _intention;
 
@@ -87,22 +86,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) => const AppDrawerScreen(),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const AppDrawerScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 1),
-              end: Offset.zero,
-            ).animate(
-              CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-              ),
-            ),
-            child: FadeTransition(
-              opacity: animation,
-              child: child,
-            ),
+            position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
+            child: FadeTransition(opacity: animation, child: child),
           );
         },
         transitionDuration: const Duration(milliseconds: 300),
@@ -122,107 +117,119 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return PopScope(
       canPop: false, // Prevent back button from exiting the launcher
       child: Scaffold(
-        backgroundColor: Colors.black, // Solid black to fix recents wallpaper glitch
+        resizeToAvoidBottomInset: false,
+        backgroundColor:
+            Colors.black, // Solid black to fix recents wallpaper glitch
         body: Stack(
           children: [
-          // Gesture Layer that spans the whole screen
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onVerticalDragEnd: (details) {
-              if (details.primaryVelocity != null && details.primaryVelocity! < -300) {
-                // Strong Swipe UP
-                _openAppDrawer();
-              }
-            },
-            onHorizontalDragEnd: (details) {
-              final velocity = details.primaryVelocity;
-              if (velocity != null) {
-                if (velocity > 300) {
-                  // Horizontal Swipe Right -> Open Dashboard
-                  Navigator.push(
-                    context,
-                    PageRouteBuilder(
-                      pageBuilder: (context, animation, secondaryAnimation) => const UsageDashboardScreen(),
-                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                        return FadeTransition(opacity: animation, child: child);
-                      },
-                    ),
-                  );
-                } else if (velocity < -300) {
-                  // Horizontal Swipe Left -> Reserved for future feature!
+            // Gesture Layer that spans the whole screen
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onVerticalDragEnd: (details) {
+                if (details.primaryVelocity != null &&
+                    details.primaryVelocity! < -300) {
+                  // Strong Swipe UP
+                  _openAppDrawer();
                 }
-              }
-            },
-            child: SizedBox(
-              width: double.infinity,
-              height: double.infinity,
-              child: SafeArea(
-                child: Column(
-                  children: [
-                    if (!_isDefaultLauncher) _buildDefaultLauncherBanner(),
-                    if (!_hasUsagePermission) _buildUsagePermissionBanner(),
-                    _buildTopInfoBar(),
-
-                    // Live Precision Clock
-                    if (_intention != null && !_showIntentionSetter)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 24.0),
-                        child: LiveClockWidget(),
+              },
+              onHorizontalDragEnd: (details) {
+                final velocity = details.primaryVelocity;
+                if (velocity != null) {
+                  if (velocity > 300) {
+                    // Horizontal Swipe Right -> Open Dashboard
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) =>
+                            const UsageDashboardScreen(),
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                              return FadeTransition(
+                                opacity: animation,
+                                child: child,
+                              );
+                            },
                       ),
+                    );
+                  } else if (velocity < -300) {
+                    // Horizontal Swipe Left -> Reserved for future feature!
+                  }
+                }
+              },
+              child: SizedBox(
+                width: double.infinity,
+                height: double.infinity,
+                child: SafeArea(
+                  child: Column(
+                    children: [
+                      if (!_isDefaultLauncher) _buildDefaultLauncherBanner(),
+                      if (!_hasUsagePermission) _buildUsagePermissionBanner(),
+                      _buildTopInfoBar(),
 
-                    if (_intention != null && !_showIntentionSetter) _buildIntentionHeader(),
-                    if (_intention != null && !_showIntentionSetter) const SizedBox(height: 16),
-                    if (_intention != null && !_showIntentionSetter) const TodoListWidget(),
-                    const Spacer(),
-                    
-                    // Essential Shortcuts Dock
-                    _buildQuickAccessDock(),
-                    const SizedBox(height: 16),
+                      // Live Precision Clock removed
+                      if (_intention != null && !_showIntentionSetter)
+                        _buildIntentionHeader(),
 
-                    // Swipe up Hint
-                    GestureDetector(
-                      onTap: _openAppDrawer,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.keyboard_arrow_up, color: Colors.white60, size: 28),
-                          Text(
-                            "Swipe up or tap to search",
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.6),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
+                      if (_intention != null && !_showIntentionSetter)
+                        const Spacer(),
+
+                      if (_intention != null && !_showIntentionSetter)
+                        const TodoListWidget(),
+                      const Spacer(),
+
+                      // Essential Shortcuts Dock
+                      _buildQuickAccessDock(),
+                      const SizedBox(height: 16),
+
+                      // Swipe up Hint
+                      GestureDetector(
+                        onTap: _openAppDrawer,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.keyboard_arrow_up,
+                              color: Colors.white60,
+                              size: 28,
                             ),
-                          ),
-                          const SizedBox(height: 80), // Massive dead-zone to prevent mistaps on home swipe
-                        ],
+                            Text(
+                              "Swipe up or tap to search",
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.6),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            // const SizedBox(height: 24), // Tighter gap for better grounded layout
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // Overlays
-          if (_showIntentionSetter)
-            IntentionSetter(
-              initialIntention: _intention,
-              onDismiss: () {
-                setState(() {
-                  _showIntentionSetter = false;
-                });
-              },
-              onIntentionSet: () {
-                setState(() {
-                  _showIntentionSetter = false;
-                  _intention = StorageService.getDailyIntention();
-                });
-              },
-            ),
-        ],
+            // Overlays
+            if (_showIntentionSetter)
+              IntentionSetter(
+                initialIntention: _intention,
+                onDismiss: () {
+                  setState(() {
+                    _showIntentionSetter = false;
+                  });
+                },
+                onIntentionSet: () {
+                  setState(() {
+                    _showIntentionSetter = false;
+                    _intention = StorageService.getDailyIntention();
+                  });
+                },
+              ),
+          ],
+        ),
       ),
-    ));
+    );
   }
 
   Widget _buildTopInfoBar() {
@@ -230,9 +237,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          if (_hasUsagePermission) _buildUsageStats(),
-        ],
+        children: [if (_hasUsagePermission) _buildUsageStats()],
       ),
     );
   }
@@ -250,28 +255,28 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-          Text(
-            "TODAY'S INTENTION",
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
-              letterSpacing: 2,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              shadows: const [Shadow(blurRadius: 10, color: Colors.black54)],
+            Text(
+              "TODAY'S INTENTION",
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                letterSpacing: 2,
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                shadows: const [Shadow(blurRadius: 10, color: Colors.black54)],
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _intention!,
-            style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                  fontSize: 36,
-                  height: 1.2,
-                  fontWeight: FontWeight.w300,
-                  shadows: const [Shadow(blurRadius: 10, color: Colors.black54)],
-                ),
-          ),
-        ],
-      ),
+            const SizedBox(height: 8),
+            Text(
+              _intention!,
+              style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                fontSize: 36,
+                height: 1.2,
+                fontWeight: FontWeight.w300,
+                shadows: const [Shadow(blurRadius: 10, color: Colors.black54)],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -283,10 +288,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const UsageDashboardScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(opacity: animation, child: child);
-            },
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const UsageDashboardScreen(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
           ),
         );
       },
@@ -328,24 +335,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           const Expanded(
             child: Text(
               "Kora is not default launcher",
-              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).primaryColor,
               foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             onPressed: () {
-              const AndroidIntent intent = AndroidIntent(
-                action: 'android.settings.HOME_SETTINGS',
-                flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
-              );
-              intent.launch();
+              NativeService.openDefaultLauncherSettings();
             },
-              child: Text( "SET DEFAULT",
-              style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+            child: Text(
+              "SET DEFAULT",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -369,22 +383,36 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           const Expanded(
             child: Text(
               "Enable usage stats for insights",
-              style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               // foregroundColor: Colors.orange,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             onPressed: () {
               showDialog(
                 context: context,
                 builder: (context) => AlertDialog(
                   backgroundColor: const Color(0xFF1E293B),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  title: const Text("Usage Access Required", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  title: const Text(
+                    "Usage Access Required",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   content: const Text(
                     "Kora Launcher requires 'Usage Access' permission to monitor which apps you open and for how long.\n\n"
                     "This allows the Rising Tide system to intercept habit-building apps, measure your screen time accurately, and help you reduce distractions.\n\n"
@@ -394,26 +422,43 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+                      child: const Text(
+                        "Cancel",
+                        style: TextStyle(color: Colors.grey),
+                      ),
                     ),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                       onPressed: () async {
                         Navigator.pop(context);
                         await NativeService.openUsageSettings();
                       },
-                      child: const Text("I Understand", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                      child: const Text(
+                        "I Understand",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
                     ),
                   ],
                 ),
               );
             },
-            child: const Text("ENABLE", style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              "ENABLE",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -436,7 +481,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _buildShortcutIcon(
             icon: Icons.message,
             onTap: () => const AndroidIntent(
-              action: 'android.intent.action.MAIN', 
+              action: 'android.intent.action.MAIN',
               category: 'android.intent.category.APP_MESSAGING',
               flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
             ).launch(),
@@ -444,7 +489,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _buildShortcutIcon(
             icon: Icons.language, // Browser
             onTap: () => const AndroidIntent(
-              action: 'android.intent.action.MAIN', 
+              action: 'android.intent.action.MAIN',
               category: 'android.intent.category.APP_BROWSER',
               flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
             ).launch(),
@@ -459,7 +504,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _buildShortcutIcon(
             icon: Icons.image_outlined,
             onTap: () => const AndroidIntent(
-              action: 'android.intent.action.MAIN', 
+              action: 'android.intent.action.MAIN',
               category: 'android.intent.category.APP_GALLERY',
               flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
             ).launch(),
@@ -469,7 +514,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildShortcutIcon({required IconData icon, required VoidCallback onTap}) {
+  Widget _buildShortcutIcon({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
