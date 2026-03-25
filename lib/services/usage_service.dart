@@ -22,9 +22,9 @@ class UsageService {
       if (!hasPermission) return; 
 
       DateTime endDate = DateTime.now();
-      DateTime startDate = DateTime(endDate.year, endDate.month, endDate.day, 0, 0, 1);
+      DateTime startDate = DateTime(endDate.year, endDate.month, endDate.day);
       
-      Map<String, int> rawStats = await NativeService.getAccurateUsageStats(
+      Map<String, int> rawStats = await NativeService.getRawUsageStats(
         startDate.millisecondsSinceEpoch,
         endDate.millisecondsSinceEpoch,
       );

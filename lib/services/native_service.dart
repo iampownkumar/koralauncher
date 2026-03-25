@@ -36,9 +36,9 @@ static const platform = MethodChannel('com.koralauncher.app/native');
     }
   }
 
-  static Future<Map<String, int>> getAccurateUsageStats(int startTime, int endTime) async {
+  static Future<Map<String, int>> getRawUsageStats(int startTime, int endTime) async {
     try {
-      final Map<dynamic, dynamic>? result = await platform.invokeMethod('getAccurateUsageStats', {
+      final Map<dynamic, dynamic>? result = await platform.invokeMethod('getRawUsageStats', {
         'startTime': startTime,
         'endTime': endTime,
       });

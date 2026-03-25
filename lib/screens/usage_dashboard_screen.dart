@@ -42,7 +42,7 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
 
     if (mounted) {
       setState(() {
-        _sortedApps = apps.where((app) => UsageService.getAppUsage(app.packageName).inMinutes > 0).toList();
+        _sortedApps = apps.where((app) => UsageService.getAppUsage(app.packageName).inMilliseconds > 0).toList();
         _isLoading = false;
       });
     }

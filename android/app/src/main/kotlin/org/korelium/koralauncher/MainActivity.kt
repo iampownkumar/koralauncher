@@ -53,10 +53,10 @@ class MainActivity: FlutterActivity() {
                     openDefaultLauncherSettings()
                     result.success(null)
                 }
-                "getAccurateUsageStats" -> {
+                "getRawUsageStats" -> {
                     val startTime = call.argument<Long>("startTime") ?: 0L
                     val endTime = call.argument<Long>("endTime") ?: System.currentTimeMillis()
-                    val stats = getAccurateUsageStats(startTime, endTime)
+                    val stats = getRawUsageStats(startTime, endTime)
                     result.success(stats)
                 }
                 else -> {
@@ -66,38 +66,15 @@ class MainActivity: FlutterActivity() {
         }
     }
 
-    private fun getAccurateUsageStats(startTime: Long, endTime: Long): Map<String, Long> {
+    private fun getRawUsageStats(startTime: Long, endTime: Long): Map<String, Long> {
         val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
-        val events = usageStatsManager.queryEvents(startTime, endTime)
+        val stats = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
         val usageMap = mutableMapOf<String, Long>()
-        val startMap = mutableMapOf<String, Long>()
         
-        val event = android.app.usage.UsageEvents.Event()
-        while (events.hasNextEvent()) {
-            events.getNextEvent(event)
-            val packageName = event.packageName ?: continue
-            
-            when (event.eventType) {
-                android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED -> {
-                    startMap[packageName] = event.timeStamp
-                }
-                android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED,
-                android.app.usage.UsageEvents.Event.ACTIVITY_STOPPED -> {
-                    startMap[packageName]?.let { start ->
-                        val duration = event.timeStamp - start
-                        if (duration > 0) {
-                            usageMap[packageName] = (usageMap[packageName] ?: 0L) + duration
-                        }
-                        startMap.remove(packageName)
-                    }
-                }
-            }
-        }
-        
-        for ((packageName, start) in startMap) {
-            val duration = endTime - start
-            if (duration > 0) {
-                usageMap[packageName] = (usageMap[packageName] ?: 0L) + duration
+        for (usageStat in stats.values) {
+            val totalTime = usageStat.totalTimeInForeground
+            if (totalTime > 0) {
+                usageMap[usageStat.packageName] = totalTime
             }
         }
         
