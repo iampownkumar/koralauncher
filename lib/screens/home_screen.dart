@@ -21,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _showIntentionSetter = false;
   bool _isDefaultLauncher = true;
   bool _hasUsagePermission = true;
+  bool _hasSkippedIntentionTodaySession = false;
   String? _intention;
 
   @override
@@ -70,15 +71,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _checkIntention() {
-    if (!StorageService.hasSetIntentionToday()) {
-      setState(() {
-        _showIntentionSetter = true;
-      });
+    _intention = StorageService.getDailyIntention();
+    if (_intention == null && !StorageService.hasSetIntentionToday() && !_hasSkippedIntentionTodaySession) {
+      if (mounted) {
+        setState(() {
+          _showIntentionSetter = true;
+        });
+      }
     } else {
-      setState(() {
-        _intention = StorageService.getDailyIntention();
-        _showIntentionSetter = false;
-      });
+      if (mounted) {
+        setState(() {
+          _showIntentionSetter = false;
+        });
+      }
     }
   }
 
@@ -167,14 +172,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       _buildTopInfoBar(),
 
                       // Live Precision Clock removed
-                      if (_intention != null && !_showIntentionSetter)
-                        _buildIntentionHeader(),
+                      if (!_showIntentionSetter) _buildIntentionHeader(),
 
-                      if (_intention != null && !_showIntentionSetter)
-                        const Spacer(),
+                      if (!_showIntentionSetter) const Spacer(),
 
-                      if (_intention != null && !_showIntentionSetter)
-                        const TodoListWidget(),
+                      if (!_showIntentionSetter) const TodoListWidget(),
                       const Spacer(),
 
                       // Essential Shortcuts Dock
@@ -217,6 +219,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 onDismiss: () {
                   setState(() {
                     _showIntentionSetter = false;
+                    _hasSkippedIntentionTodaySession = true;
                   });
                 },
                 onIntentionSet: () {
@@ -246,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
       child: GestureDetector(
-        onLongPress: () {
+        onTap: () {
           setState(() {
             _showIntentionSetter = true;
           });
@@ -267,10 +270,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             const SizedBox(height: 8),
             Text(
-              _intention!,
+              _intention ?? "Tap to set intention...",
               style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                fontSize: 36,
+                fontSize: _intention != null ? 36 : 24,
                 height: 1.2,
+                color: _intention != null ? Colors.white : Colors.white38,
                 fontWeight: FontWeight.w300,
                 shadows: const [Shadow(blurRadius: 10, color: Colors.black54)],
               ),
