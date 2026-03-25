@@ -1,7 +1,6 @@
 import 'package:installed_apps/app_info.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:flutter/material.dart';
-import '../services/native_service.dart';
 import '../database/database_provider.dart';
 import '../widgets/micro_habit_suggestion.dart';
 

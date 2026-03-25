@@ -57,7 +57,7 @@ class _IntentionSetterState extends State<IntentionSetter> {
           width: MediaQuery.of(context).size.width * 0.85,
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F172A).withOpacity(0.8),
+            color: const Color(0xFF0F172A).withValues(alpha: 0.8),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: Colors.white10),
           ),

@@ -4,7 +4,6 @@ import 'theme/app_theme.dart';
 import 'services/storage_service.dart';
 import 'services/launcher_service.dart';
 import 'services/usage_service.dart';
-import 'database/database_provider.dart';
 
 // Fix — remove that line entirely, the lazy getter handles it
 void main() async {

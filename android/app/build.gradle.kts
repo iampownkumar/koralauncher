@@ -5,6 +5,8 @@ val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+} else {
+    throw GradleException("Could not find key.properties at ${keystorePropertiesFile.absolutePath}")
 }
 
 plugins {
@@ -41,10 +43,10 @@ android {
 
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String?
-            keyPassword = keystoreProperties["keyPassword"] as String?
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
-            storePassword = keystoreProperties["storePassword"] as String?
+            keyAlias = keystoreProperties["keyAlias"] as String? ?: throw GradleException("keyAlias is missing from key.properties")
+            keyPassword = keystoreProperties["keyPassword"] as String? ?: throw GradleException("keyPassword is missing from key.properties")
+            storeFile = keystoreProperties["storeFile"]?.let { file(it) } ?: throw GradleException("storeFile is missing from key.properties")
+            storePassword = keystoreProperties["storePassword"] as String? ?: throw GradleException("storePassword is missing from key.properties")
         }
     }
 
