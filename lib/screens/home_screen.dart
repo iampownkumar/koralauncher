@@ -6,6 +6,7 @@ import '../services/native_service.dart';
 import 'app_drawer_screen.dart';
 import '../widgets/intention_setter.dart';
 import '../widgets/live_clock.dart';
+import '../widgets/todo_list_widget.dart';
 import 'usage_dashboard_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
@@ -170,6 +171,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
 
                     if (_intention != null && !_showIntentionSetter) _buildIntentionHeader(),
+                    if (_intention != null && !_showIntentionSetter) const SizedBox(height: 16),
+                    if (_intention != null && !_showIntentionSetter) const TodoListWidget(),
                     const Spacer(),
                     
                     // Essential Shortcuts Dock
@@ -425,27 +428,41 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         children: [
           _buildShortcutIcon(
             icon: Icons.phone,
-            onTap: () => const AndroidIntent(action: 'android.intent.action.DIAL').launch(),
+            onTap: () => const AndroidIntent(
+              action: 'android.intent.action.DIAL',
+              flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
+            ).launch(),
           ),
           _buildShortcutIcon(
-
-
-
-            
             icon: Icons.message,
-            onTap: () => const AndroidIntent(action: 'android.intent.action.MAIN', category: 'android.intent.category.APP_MESSAGING').launch(),
+            onTap: () => const AndroidIntent(
+              action: 'android.intent.action.MAIN', 
+              category: 'android.intent.category.APP_MESSAGING',
+              flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
+            ).launch(),
           ),
           _buildShortcutIcon(
             icon: Icons.language, // Browser
-            onTap: () => const AndroidIntent(action: 'android.intent.action.MAIN', category: 'android.intent.category.APP_BROWSER').launch(),
+            onTap: () => const AndroidIntent(
+              action: 'android.intent.action.MAIN', 
+              category: 'android.intent.category.APP_BROWSER',
+              flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
+            ).launch(),
           ),
           _buildShortcutIcon(
             icon: Icons.camera_alt,
-            onTap: () => const AndroidIntent(action: 'android.media.action.STILL_IMAGE_CAMERA').launch(),
+            onTap: () => const AndroidIntent(
+              action: 'android.media.action.STILL_IMAGE_CAMERA',
+              flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
+            ).launch(),
           ),
           _buildShortcutIcon(
             icon: Icons.image_outlined,
-            onTap: () => const AndroidIntent(action: 'android.intent.action.MAIN', category: 'android.intent.category.APP_GALLERY').launch(),
+            onTap: () => const AndroidIntent(
+              action: 'android.intent.action.MAIN', 
+              category: 'android.intent.category.APP_GALLERY',
+              flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
+            ).launch(),
           ),
         ],
       ),

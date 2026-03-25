@@ -17,7 +17,8 @@ class UsageService {
       if (!hasPermission) return; // Fail gracefully without triggering OS prompt
 
       DateTime endDate = DateTime.now();
-      DateTime startDate = DateTime(endDate.year, endDate.month, endDate.day);
+      // Add 1 second offset past midnight to prevent intersecting with previous day's usage bucket
+      DateTime startDate = DateTime(endDate.year, endDate.month, endDate.day, 0, 0, 1);
       
       List<AppUsageInfo> infoList = await AppUsage().getAppUsage(startDate, endDate);
       _usageInfos = infoList;

@@ -11,11 +11,11 @@ void main() async {
   await StorageService.init();
   await LauncherService.init();
   await UsageService.refreshUsage();
-  runApp(const MyApp());
+  runApp(const KoraLauncher());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class KoraLauncher extends StatelessWidget {
+  const KoraLauncher({super.key});
 
   @override
   Widget build(BuildContext context) {

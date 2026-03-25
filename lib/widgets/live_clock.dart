@@ -44,14 +44,15 @@ class _LiveClockWidgetState extends State<LiveClockWidget> {
     String s = twoDigits(_now.second);
     // Use first two digits of milliseconds for UI stability (00-99 instead of 000-999)
     String ms = threeDigits(_now.millisecond).substring(0, 2); 
+    String tz = _now.timeZoneName;
 
-    return "$h:$m:$s.$ms";
+    return "$h:$m:$s:$ms $tz";
   }
 
-  @override
   Widget build(BuildContext context) {
     return Text(
       _formatTime(),
+      textAlign: TextAlign.center,
       style: Theme.of(context).textTheme.displayLarge?.copyWith(
             fontSize: 48,
             fontWeight: FontWeight.w200,

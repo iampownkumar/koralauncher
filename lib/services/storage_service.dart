@@ -47,5 +47,21 @@ class StorageService {
   static Future<void> setMinimalMode(bool value) async {
     await _prefs.setBool('minimal_mode', value);
   }
+
+  static List<String> getTodos() {
+    return _prefs.getStringList('todo_list') ?? ['', '', '', ''];
+  }
+
+  static Future<void> setTodos(List<String> todos) async {
+    await _prefs.setStringList('todo_list', todos);
+  }
+
+  static List<String> getTodoStates() {
+    return _prefs.getStringList('todo_states') ?? ['false', 'false', 'false', 'false'];
+  }
+
+  static Future<void> setTodoStates(List<String> states) async {
+    await _prefs.setStringList('todo_states', states);
+  }
 }
 
