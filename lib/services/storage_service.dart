@@ -58,19 +58,23 @@ class StorageService {
   }
 
   static List<String> getTodos() {
-    return _prefs.getStringList('todo_list') ?? ['', '', '', ''];
+    final today = _localDayKey(DateTime.now());
+    return _prefs.getStringList('todo_list_$today') ?? ['', '', '', ''];
   }
 
   static Future<void> setTodos(List<String> todos) async {
-    await _prefs.setStringList('todo_list', todos);
+    final today = _localDayKey(DateTime.now());
+    await _prefs.setStringList('todo_list_$today', todos);
   }
 
   static List<String> getTodoStates() {
-    return _prefs.getStringList('todo_states') ?? ['false', 'false', 'false', 'false'];
+    final today = _localDayKey(DateTime.now());
+    return _prefs.getStringList('todo_states_$today') ?? ['false', 'false', 'false', 'false'];
   }
 
   static Future<void> setTodoStates(List<String> states) async {
-    await _prefs.setStringList('todo_states', states);
+    final today = _localDayKey(DateTime.now());
+    await _prefs.setStringList('todo_states_$today', states);
   }
 }
 

@@ -85,7 +85,7 @@ class _IntentionSetterState extends State<IntentionSetter> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: _controller,
-                  autofocus: true,
+                  autofocus: false,
                   style: const TextStyle(color: Colors.white, fontSize: 18),
                   decoration: const InputDecoration(
                     hintText: "e.g. Finish my project",

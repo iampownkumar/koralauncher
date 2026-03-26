@@ -36,6 +36,14 @@ static const platform = MethodChannel('com.koralauncher.app/native');
     }
   }
 
+  static Future<void> lockScreen() async {
+    try {
+      await platform.invokeMethod('lockScreen');
+    } catch (e) {
+      print("Failed to lock screen: $e");
+    }
+  }
+
   static Future<Map<String, int>> getRawUsageStats(int startTime, int endTime) async {
     try {
       final Map<dynamic, dynamic>? result = await platform.invokeMethod('getRawUsageStats', {

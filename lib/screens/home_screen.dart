@@ -9,6 +9,7 @@ import '../widgets/todo_list_widget.dart';
 import 'usage_dashboard_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
+import 'package:upgrader/upgrader.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -72,7 +73,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _checkIntention() {
     _intention = StorageService.getDailyIntention();
-    if (_intention == null && !StorageService.hasSetIntentionToday() && !_hasSkippedIntentionTodaySession) {
+    if (_intention == null &&
+        !StorageService.hasSetIntentionToday() &&
+        !_hasSkippedIntentionTodaySession) {
       if (mounted) {
         setState(() {
           _showIntentionSetter = true;
@@ -122,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return PopScope(
       canPop: false, // Prevent back button from exiting the launcher
       child: Scaffold(
-        resizeToAvoidBottomInset: false,
+        resizeToAvoidBottomInset: true,
         backgroundColor:
             Colors.black, // Solid black to fix recents wallpaper glitch
         body: Stack(
@@ -130,6 +133,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             // Gesture Layer that spans the whole screen
             GestureDetector(
               behavior: HitTestBehavior.opaque,
+              onDoubleTap: () {
+                NativeService.lockScreen();
+              },
               onVerticalDragEnd: (details) {
                 if (details.primaryVelocity != null &&
                     details.primaryVelocity! < -300) {
@@ -229,6 +235,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   });
                 },
               ),
+            // Update Alert overlay
+            UpgradeAlert(
+              showIgnore: false,
+              showLater: true,
+              dialogStyle: UpgradeDialogStyle.material,
+              child: SizedBox.shrink(),
+            ),
           ],
         ),
       ),

@@ -54,37 +54,22 @@ class UsageService {
     return (duration.inMilliseconds + 30000) ~/ 60000;
   }
 
-  static const Set<String> _ignoredPackages = {
-    'com.miui.home',
-    'com.google.android.apps.nexuslauncher',
-    'com.sec.android.app.launcher',
-    'com.oppo.launcher',
-    'com.huawei.android.launcher',
-    'com.vivo.launcher',
-    'com.transsion.XOSLauncher',
-    'com.transsion.hilauncher',
-    'com.google.android.apps.wellbeing', 
-    'com.miui.securitycenter',
-    'com.android.systemui',
-    'com.google.android.googlequicksearchbox',
-    'com.google.android.gms',
-    'com.android.providers.media.module',
-  };
-
   static bool shouldCountPackage(String packageName) {
     if (packageName.contains('koralauncher')) return false;
-    return !_ignoredPackages.contains(packageName);
+    return true;
   }
 
   static Duration getVisibleTotalUsage({int minRoundedMinutes = 1}) {
     int totalMinutes = 0;
+    // We only count apps that are in our launcher (launchable by user)
+    // and aren't explicitly ignored (like system processes).
     for (final app in LauncherService.cachedApps) {
       if (!shouldCountPackage(app.packageName)) continue;
 
-      final usageMs = getAppUsage(app.packageName).inMilliseconds;
-      final roundedMinutes = (usageMs + 30000) ~/ 60000; // round half-up
-      if (roundedMinutes >= minRoundedMinutes) {
-        totalMinutes += roundedMinutes;
+      final usage = getAppUsage(app.packageName);
+      final minutes = _roundedMinutes(usage);
+      if (minutes >= minRoundedMinutes) {
+        totalMinutes += minutes;
       }
     }
     return Duration(minutes: totalMinutes);
@@ -97,8 +82,7 @@ class UsageService {
 
     for (var info in _usageInfos) {
       if (cachedPackages.contains(info.packageName) && 
-          !info.packageName.contains('koralauncher') &&
-          !_ignoredPackages.contains(info.packageName)) {
+          !info.packageName.contains('koralauncher')) {
         
         // Handle overlapping daily buckets bug in app_usage by taking the maximum payload
         if (!uniqueUsage.containsKey(info.packageName) || info.usage > uniqueUsage[info.packageName]!) {

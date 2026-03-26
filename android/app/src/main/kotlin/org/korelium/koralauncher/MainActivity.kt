@@ -59,6 +59,10 @@ class MainActivity: FlutterActivity() {
                     val stats = getRawUsageStats(startTime, endTime)
                     result.success(stats)
                 }
+                "lockScreen" -> {
+                    lockScreen()
+                    result.success(null)
+                }
                 else -> {
                     result.notImplemented()
                 }
@@ -151,6 +155,20 @@ class MainActivity: FlutterActivity() {
             startActivity(intent)
         } catch (e: Exception) {
             startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+        }
+    }
+
+    private fun lockScreen() {
+        val dpm = getSystemService(Context.DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager
+        val compName = android.content.ComponentName(this, AdminReceiver::class.java)
+
+        if (dpm.isAdminActive(compName)) {
+            dpm.lockNow()
+        } else {
+            val intent = Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
+            intent.putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, compName)
+            intent.putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Kora Launcher needs this permission to double-tap to lock the screen.")
+            startActivity(intent)
         }
     }
 }

@@ -4,6 +4,7 @@ import '../services/launcher_service.dart';
 import '../services/usage_service.dart';
 import '../widgets/app_list_item.dart';
 import '../services/storage_service.dart';
+import '../services/native_service.dart';
 import 'interception_screen.dart';
 
 class UsageDashboardScreen extends StatefulWidget {
@@ -16,19 +17,14 @@ class UsageDashboardScreen extends StatefulWidget {
 class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
   List<AppInfo> _sortedApps = [];
   bool _isLoading = true;
+  bool _hasUsagePermission = true;
 
   int _roundedMinutesForApp(String packageName) {
-    final usageMs = UsageService.getAppUsage(packageName).inMilliseconds;
-    // Keep rounding logic identical to the list filter above (rounded half-up).
-    return (usageMs + 30000) ~/ 60000;
+    return (UsageService.getAppUsage(packageName).inMilliseconds + 30000) ~/ 60000;
   }
 
-  Duration _computeTotalFromVisibleApps() {
-    final totalMinutes = _sortedApps.fold<int>(
-      0,
-      (sum, app) => sum + _roundedMinutesForApp(app.packageName),
-    );
-    return Duration(minutes: totalMinutes);
+  Duration _computeTotal() {
+    return UsageService.getVisibleTotalUsage(minRoundedMinutes: 1);
   }
 
   @override
@@ -38,15 +34,16 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
   }
 
   Future<void> _loadDashBoardData() async {
+    final hasPermission = await NativeService.hasUsagePermission();
     // Make sure we have the latest usage logic from UsageService
     await UsageService.refreshUsage();
-    
+
     // Grab all launchable apps
     List<AppInfo> apps = List.from(LauncherService.cachedApps);
-    
+
     // We only care about apps that actually have usage > 0, and not the launcher itself
     apps.removeWhere((app) => app.packageName.contains('koralauncher'));
-    
+
     apps.sort((a, b) {
       final usageA = UsageService.getAppUsage(a.packageName);
       final usageB = UsageService.getAppUsage(b.packageName);
@@ -56,13 +53,10 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
 
     if (mounted) {
       setState(() {
-        // Match Digital Wellbeing behavior: show anything with at least 1 rounded minute.
-        _sortedApps = apps.where((app) {
-          if (!UsageService.shouldCountPackage(app.packageName)) return false;
-          final usageMs = UsageService.getAppUsage(app.packageName).inMilliseconds;
-          final roundedMinutes = (usageMs + 30000) ~/ 60000; // round half-up
-          return roundedMinutes >= 1;
-        }).toList();
+        _sortedApps = apps
+            .where((app) => _roundedMinutesForApp(app.packageName) >= 1)
+            .toList();
+        _hasUsagePermission = hasPermission;
         _isLoading = false;
       });
     }
@@ -72,75 +66,103 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
   Widget build(BuildContext context) {
     // Keep TOTAL SCREEN TIME consistent with what we display in the list:
     // same rounded-minute rule, same visible app set.
-    final totalUsage = _computeTotalFromVisibleApps();
-    
+    final totalUsage = _computeTotal();
+
     return GestureDetector(
       onHorizontalDragEnd: (details) {
-        if (details.primaryVelocity != null && details.primaryVelocity!.abs() > 300) {
+        if (details.primaryVelocity != null &&
+            details.primaryVelocity!.abs() > 300) {
           Navigator.pop(context);
         }
       },
       child: Scaffold(
         backgroundColor: Colors.black, // Dark minimalism
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white70),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Usage Dashboard",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w300),
-        ),
-      ),
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: Colors.white24))
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildSummaryHeader(totalUsage),
-              const SizedBox(height: 16),
-              Expanded(
-                child: _sortedApps.isEmpty
-                    ? const Center(child: Text("No significant app usage data recorded today.", style: TextStyle(color: Colors.white54)))
-                    : ListView.builder(
-                        itemCount: _sortedApps.length,
-                        itemBuilder: (context, index) {
-                          final app = _sortedApps[index];
-                          final isFlagged = StorageService.isAppFlagged(app.packageName);
-                          final usage = UsageService.getAppUsage(app.packageName);
-                          
-                          return AppListItem(
-                            app: app, 
-                            usage: usage, 
-                            isFlagged: isFlagged,
-                            onLongPress: () async {
-                              await StorageService.toggleFlaggedApp(app.packageName);
-                              if (mounted) setState(() {});
-                            },
-                            onTap: () {
-                              if (isFlagged) {
-                                Navigator.push(
-                                  context,
-                                  PageRouteBuilder(
-                                    pageBuilder: (context, animation, secondaryAnimation) => 
-                                        InterceptionScreen(app: app),
-                                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                                      return FadeTransition(opacity: animation, child: child);
-                                    },
-                                  ),
-                                );
-                              } else {
-                                LauncherService.launchApp(app.packageName);
-                              }
-                            },
-                          );
-                        },
-                      ),
-              )
-            ],
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios, color: Colors.white70),
+            onPressed: () => Navigator.pop(context),
           ),
+          title: const Text(
+            "Usage Dashboard",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w300),
+          ),
+        ),
+        body: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: Colors.white24),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (!_hasUsagePermission) _buildUsagePermissionBanner(),
+                  _buildSummaryHeader(totalUsage),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: _sortedApps.isEmpty
+                        ? const Center(
+                            child: Text(
+                              "No significant app usage data recorded today.",
+                              style: TextStyle(color: Colors.white54),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: _sortedApps.length,
+                            itemBuilder: (context, index) {
+                              final app = _sortedApps[index];
+                              final isFlagged = StorageService.isAppFlagged(
+                                app.packageName,
+                              );
+                              final usage = UsageService.getAppUsage(
+                                app.packageName,
+                              );
+
+                              return AppListItem(
+                                app: app,
+                                usage: usage,
+                                isFlagged: isFlagged,
+                                onLongPress: () async {
+                                  await StorageService.toggleFlaggedApp(
+                                    app.packageName,
+                                  );
+                                  if (mounted) setState(() {});
+                                },
+                                onTap: () {
+                                  if (isFlagged) {
+                                    Navigator.push(
+                                      context,
+                                      PageRouteBuilder(
+                                        pageBuilder:
+                                            (
+                                              context,
+                                              animation,
+                                              secondaryAnimation,
+                                            ) => InterceptionScreen(app: app),
+                                        transitionsBuilder:
+                                            (
+                                              context,
+                                              animation,
+                                              secondaryAnimation,
+                                              child,
+                                            ) {
+                                              return FadeTransition(
+                                                opacity: animation,
+                                                child: child,
+                                              );
+                                            },
+                                      ),
+                                    );
+                                  } else {
+                                    LauncherService.launchApp(app.packageName);
+                                  }
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -158,12 +180,120 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
         children: [
           const Text(
             "TOTAL SCREEN TIME",
-            style: TextStyle(color: Colors.white54, fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 12,
+              letterSpacing: 2,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 12),
           Text(
             UsageService.formatDuration(total),
-            style: const TextStyle(color: Colors.white, fontSize: 42, fontWeight: FontWeight.w200, height: 1),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 42,
+              fontWeight: FontWeight.w200,
+              height: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUsagePermissionBanner() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.show_chart, size: 24, color: Colors.white),
+          const SizedBox(width: 16),
+          const Expanded(
+            child: Text(
+              "Enable usage stats for insights",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: const Color(0xFF1E293B),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  title: const Text(
+                    "Usage Access Required",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  content: const Text(
+                    "Kora Launcher requires 'Usage Access' permission to monitor which apps you open and for how long.\n\n"
+                    "This allows the Rising Tide system to intercept habit-building apps, measure your screen time accurately, and help you reduce distractions.\n\n"
+                    "Your usage data strictly stays on your device and is never sent to any servers.",
+                    style: TextStyle(color: Colors.white70, height: 1.4),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text(
+                        "Cancel",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await NativeService.openUsageSettings();
+                        _loadDashBoardData();
+                      },
+                      child: const Text(
+                        "I Understand",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+            child: const Text(
+              "ENABLE",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),

@@ -20,6 +20,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
   List<AppInfo> _filteredApps = [];
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
   bool _hasUsagePermission = true;
 
   @override
@@ -37,6 +38,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
   void dispose() {
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -63,16 +65,17 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
     if (_filteredApps.length == 1 && query.isNotEmpty) {
       final app = _filteredApps.first;
       final isFlagged = StorageService.isAppFlagged(app.packageName);
-      
+
       if (isFlagged) {
         Navigator.push(
           context,
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => 
+            pageBuilder: (context, animation, secondaryAnimation) =>
                 InterceptionScreen(app: app),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(opacity: animation, child: child);
-            },
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(opacity: animation, child: child);
+                },
           ),
         ).then((_) {
           _searchController.clear();
@@ -108,14 +111,17 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.black, // Solid dark background to fix recents glitch
+        backgroundColor:
+            Colors.black, // Solid dark background to fix recents glitch
         body: Stack(
           children: [
             // Dark Blur Background for premium feel over the list items as they scroll
             BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
               child: Container(
-                color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.85),
+                color: Theme.of(
+                  context,
+                ).scaffoldBackgroundColor.withValues(alpha: 0.85),
                 width: double.infinity,
                 height: double.infinity,
               ),
@@ -126,7 +132,19 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
                   const SizedBox(height: 16),
                   _buildSearchField(),
                   Expanded(
-                    child: _buildAppList(),
+                    child: NotificationListener<ScrollNotification>(
+                      onNotification: (notification) {
+                        // Detect when user is at the top AND pulls down (overscroll)
+                        if (notification is ScrollUpdateNotification) {
+                          if (notification.metrics.pixels <= -60) {
+                            Navigator.maybePop(context);
+                            return true;
+                          }
+                        }
+                        return false;
+                      },
+                      child: _buildAppList(),
+                    ),
                   ),
                 ],
               ),
@@ -168,14 +186,20 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
 
   Widget _buildAppList() {
     if (_apps.isEmpty) return const Center(child: CircularProgressIndicator());
-    
+
     return ListView.builder(
+      controller: _scrollController,
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ), // Ensure we can overscroll
       itemCount: _filteredApps.length,
       padding: const EdgeInsets.only(bottom: 32),
       itemBuilder: (context, index) {
         final app = _filteredApps[index];
         final isFlagged = StorageService.isAppFlagged(app.packageName);
-        final usage = _hasUsagePermission ? UsageService.getAppUsage(app.packageName) : Duration.zero;
+        final usage = _hasUsagePermission
+            ? UsageService.getAppUsage(app.packageName)
+            : Duration.zero;
         return AppListItem(
           app: app,
           isFlagged: isFlagged,
@@ -185,11 +209,12 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
               Navigator.push(
                 context,
                 PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) => 
+                  pageBuilder: (context, animation, secondaryAnimation) =>
                       InterceptionScreen(app: app),
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                    return FadeTransition(opacity: animation, child: child);
-                  },
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                        return FadeTransition(opacity: animation, child: child);
+                      },
                 ),
               ).then((_) {
                 _searchController.clear();
@@ -203,15 +228,17 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
           onLongPress: () async {
             await StorageService.toggleFlaggedApp(app.packageName);
             if (mounted) setState(() {});
-            final msg = StorageService.isAppFlagged(app.packageName) 
-                    ? '${app.name} is now flagged.'
-                    : '${app.name} is no longer flagged.';
+            final msg = StorageService.isAppFlagged(app.packageName)
+                ? '${app.name} is now flagged.'
+                : '${app.name} is no longer flagged.';
             ScaffoldMessenger.of(context).clearSnackBars();
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(msg),
                 behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 duration: const Duration(seconds: 2),
               ),
             );
