@@ -5,7 +5,6 @@ import '../services/usage_service.dart';
 import '../services/native_service.dart';
 import 'app_drawer_screen.dart';
 import '../widgets/intention_setter.dart';
-import '../widgets/todo_list_widget.dart';
 import 'usage_dashboard_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
@@ -41,7 +40,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.paused) {
+      // Clear focus when screen is locked or app goes to background
+      FocusManager.instance.primaryFocus?.unfocus();
+    } else if (state == AppLifecycleState.resumed) {
       if (mounted && Navigator.canPop(context)) {
         Navigator.popUntil(context, (route) => route.isFirst);
       }
@@ -133,9 +135,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             // Gesture Layer that spans the whole screen
             GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onDoubleTap: () {
-                NativeService.lockScreen();
+              onTap: () {
+                // Save and close keyboard when tapping anywhere outside
+                FocusManager.instance.primaryFocus?.unfocus();
               },
+              // onDoubleTap: () {
+              //   NativeService.lockScreen();
+              // },
               onVerticalDragEnd: (details) {
                 if (details.primaryVelocity != null &&
                     details.primaryVelocity! < -300) {
@@ -171,48 +177,52 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 width: double.infinity,
                 height: double.infinity,
                 child: SafeArea(
-                  child: Column(
-                    children: [
-                      if (!_isDefaultLauncher) _buildDefaultLauncherBanner(),
-                      if (!_hasUsagePermission) _buildUsagePermissionBanner(),
-                      _buildTopInfoBar(),
-
-                      // Live Precision Clock removed
-                      if (!_showIntentionSetter) _buildIntentionHeader(),
-
-                      if (!_showIntentionSetter) const Spacer(),
-
-                      if (!_showIntentionSetter) const TodoListWidget(),
-                      const Spacer(),
-
-                      // Essential Shortcuts Dock
-                      _buildQuickAccessDock(),
-                      const SizedBox(height: 16),
-
-                      // Swipe up Hint
-                      GestureDetector(
-                        onTap: _openAppDrawer,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.keyboard_arrow_up,
-                              color: Colors.white60,
-                              size: 28,
+                  child: SingleChildScrollView(
+                    child: SizedBox(
+                      height: MediaQuery.of(context).size.height - 
+                             MediaQuery.of(context).padding.top - 
+                             MediaQuery.of(context).padding.bottom,
+                      child: Column(
+                        children: [
+                          if (!_isDefaultLauncher) _buildDefaultLauncherBanner(),
+                          if (!_hasUsagePermission) _buildUsagePermissionBanner(),
+                          _buildTopInfoBar(),
+    
+                          // Live Precision Clock removed
+                          if (!_showIntentionSetter) _buildIntentionHeader(),
+    
+                          const Spacer(),
+    
+                          // Essential Shortcuts Dock
+                          _buildQuickAccessDock(),
+                          const SizedBox(height: 16),
+    
+                          // Swipe up Hint
+                          GestureDetector(
+                            onTap: _openAppDrawer,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.keyboard_arrow_up,
+                                  color: Colors.white60,
+                                  size: 28,
+                                ),
+                                Text(
+                                  "Swipe up or tap to search",
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                // const SizedBox(height: 24), // Tighter gap for better grounded layout
+                              ],
                             ),
-                            Text(
-                              "Swipe up or tap to search",
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.6),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            // const SizedBox(height: 24), // Tighter gap for better grounded layout
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),

@@ -12,7 +12,7 @@
         android:icon="@mipmap/launcher_icon">
         <activity
             android:name=".MainActivity"
-            android:excludeFromRecents="true"
+            android:excludeFromRecents="false"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""

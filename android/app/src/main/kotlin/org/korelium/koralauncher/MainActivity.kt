@@ -24,18 +24,8 @@ class MainActivity: FlutterActivity() {
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
-        try {
-            val wallpaperManager = android.app.WallpaperManager.getInstance(this)
-            val wpInfo = wallpaperManager.wallpaperInfo
-            // Only set if not already a live wallpaper and we haven't already forced black 
-            // (Setting it aggressively might cause micro-stutters so we do it quietly)
-            val bitmap = android.graphics.Bitmap.createBitmap(10, 10, android.graphics.Bitmap.Config.ARGB_8888)
-            val canvas = android.graphics.Canvas(bitmap)
-            canvas.drawColor(android.graphics.Color.BLACK)
-            wallpaperManager.setBitmap(bitmap)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        // Removed expensive wallpaper setting that was causing cold-start lag.
+        // The background is already handled by the Flutter UI and LaunchTheme.
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
