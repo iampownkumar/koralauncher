@@ -431,7 +431,6 @@ import '../services/usage_service.dart';
 import '../services/native_service.dart';
 import 'app_drawer_screen.dart';
 import '../widgets/intention_setter.dart';
-import '../widgets/todo_list_widget.dart';
 import 'usage_dashboard_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
@@ -467,7 +466,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.paused) {
+      // Clear focus when screen is locked or app goes to background
+      FocusManager.instance.primaryFocus?.unfocus();
+    } else if (state == AppLifecycleState.resumed) {
       if (mounted && Navigator.canPop(context)) {
         Navigator.popUntil(context, (route) => route.isFirst);
       }
@@ -559,9 +561,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             // Gesture Layer that spans the whole screen
             GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onDoubleTap: () {
-                NativeService.lockScreen();
+              onTap: () {
+                // Save and close keyboard when tapping anywhere outside
+                FocusManager.instance.primaryFocus?.unfocus();
               },
+              // onDoubleTap: () {
+              //   NativeService.lockScreen();
+              // },
               onVerticalDragEnd: (details) {
                 if (details.primaryVelocity != null &&
                     details.primaryVelocity! < -300) {
@@ -597,48 +603,52 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 width: double.infinity,
                 height: double.infinity,
                 child: SafeArea(
-                  child: Column(
-                    children: [
-                      if (!_isDefaultLauncher) _buildDefaultLauncherBanner(),
-                      if (!_hasUsagePermission) _buildUsagePermissionBanner(),
-                      _buildTopInfoBar(),
-
-                      // Live Precision Clock removed
-                      if (!_showIntentionSetter) _buildIntentionHeader(),
-
-                      if (!_showIntentionSetter) const Spacer(),
-
-                      if (!_showIntentionSetter) const TodoListWidget(),
-                      const Spacer(),
-
-                      // Essential Shortcuts Dock
-                      _buildQuickAccessDock(),
-                      const SizedBox(height: 16),
-
-                      // Swipe up Hint
-                      GestureDetector(
-                        onTap: _openAppDrawer,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.keyboard_arrow_up,
-                              color: Colors.white60,
-                              size: 28,
+                  child: SingleChildScrollView(
+                    child: SizedBox(
+                      height: MediaQuery.of(context).size.height - 
+                             MediaQuery.of(context).padding.top - 
+                             MediaQuery.of(context).padding.bottom,
+                      child: Column(
+                        children: [
+                          if (!_isDefaultLauncher) _buildDefaultLauncherBanner(),
+                          if (!_hasUsagePermission) _buildUsagePermissionBanner(),
+                          _buildTopInfoBar(),
+    
+                          // Live Precision Clock removed
+                          if (!_showIntentionSetter) _buildIntentionHeader(),
+    
+                          const Spacer(),
+    
+                          // Essential Shortcuts Dock
+                          _buildQuickAccessDock(),
+                          const SizedBox(height: 16),
+    
+                          // Swipe up Hint
+                          GestureDetector(
+                            onTap: _openAppDrawer,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.keyboard_arrow_up,
+                                  color: Colors.white60,
+                                  size: 28,
+                                ),
+                                Text(
+                                  "Swipe up or tap to search",
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                // const SizedBox(height: 24), // Tighter gap for better grounded layout
+                              ],
                             ),
-                            Text(
-                              "Swipe up or tap to search",
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.6),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            // const SizedBox(height: 24), // Tighter gap for better grounded layout
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -1440,25 +1450,6 @@ class StorageService {
     await _prefs.setBool('minimal_mode', value);
   }
 
-  static List<String> getTodos() {
-    final today = _localDayKey(DateTime.now());
-    return _prefs.getStringList('todo_list_$today') ?? ['', '', '', ''];
-  }
-
-  static Future<void> setTodos(List<String> todos) async {
-    final today = _localDayKey(DateTime.now());
-    await _prefs.setStringList('todo_list_$today', todos);
-  }
-
-  static List<String> getTodoStates() {
-    final today = _localDayKey(DateTime.now());
-    return _prefs.getStringList('todo_states_$today') ?? ['false', 'false', 'false', 'false'];
-  }
-
-  static Future<void> setTodoStates(List<String> states) async {
-    final today = _localDayKey(DateTime.now());
-    await _prefs.setStringList('todo_states_$today', states);
-  }
 }
 
 -----./services/usage_service.dart-----
@@ -2035,116 +2026,6 @@ class AppListItem extends StatelessWidget {
 
     if (hours > 0) return "${hours}h ${minutes}m";
     return "${minutes}m";
-  }
-}
------./widgets/todo_list_widget.dart-----
-import 'package:flutter/material.dart';
-import '../services/storage_service.dart';
-
-class TodoListWidget extends StatefulWidget {
-  const TodoListWidget({super.key});
-
-  @override
-  State<TodoListWidget> createState() => _TodoListWidgetState();
-}
-
-class _TodoListWidgetState extends State<TodoListWidget> {
-  late List<String> _todos;
-  late List<bool> _states;
-  late List<TextEditingController> _controllers;
-
-  @override
-  void initState() {
-    super.initState();
-    _todos = StorageService.getTodos();
-    _states = StorageService.getTodoStates().map((e) => e == 'true').toList();
-    
-    // Ensure lists are always size 3
-    while (_todos.length < 3) _todos.add('');
-    while (_states.length < 3) _states.add(false);
-
-    _controllers = _todos.map((text) => TextEditingController(text: text)).toList();
-  }
-
-  @override
-  void dispose() {
-    for (var controller in _controllers) {
-      controller.dispose();
-    }
-    super.dispose();
-  }
-
-  void _saveTodos() {
-    StorageService.setTodos(_todos);
-    StorageService.setTodoStates(_states.map((e) => e.toString()).toList());
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ...List.generate(3, (index) => _buildTodoItem(index)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTodoItem(int index) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _states[index] = !_states[index];
-              });
-              _saveTodos();
-            },
-            child: Container(
-              margin: const EdgeInsets.only(right: 12),
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                color: _states[index] ? Colors.white : Colors.transparent,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 1.5),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: _states[index] 
-                  ? const Icon(Icons.check, size: 14, color: Colors.black)
-                  : null,
-            ),
-          ),
-          Expanded(
-            child: TextField(
-              controller: _controllers[index],
-              onChanged: (val) {
-                _todos[index] = val;
-                _saveTodos();
-              },
-              style: TextStyle(
-                color: _states[index] ? Colors.white.withValues(alpha: 0.4) : Colors.white,
-                fontSize: 18,
-                decoration: _states[index] ? TextDecoration.lineThrough : null,
-                decorationColor: Colors.white.withValues(alpha: 0.4),
-              ),
-              decoration: InputDecoration(
-                hintText: "Add a task...",
-                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2), fontSize: 16),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 -----./database/database_provider.dart-----
