@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:installed_apps/app_info.dart';
@@ -12,8 +13,13 @@ import '../services/foreground_intercept_guard.dart';
 import '../services/native_service.dart';
 import '../utils/limit_time_format.dart';
 
-/// A single gentle reminder shown when a user reaches their daily time limit.
-/// Shown ONCE per day. After tapping "Continue", the app opens and no more gates fire today.
+/// Rising Tide Stage 2 — Dim Gate
+///
+/// Shown when the user opens a flagged app at ≥50% of their daily limit.
+/// The gate is unskippable for 10 seconds. After that the user must make
+/// a CONSCIOUS CHOICE:
+///   • "Open anyway"  → records decision, app opens, gate won't fire again today
+///   • "Close"        → does NOT record, so gate fires again next open
 class InterceptionScreen extends StatefulWidget {
   final AppInfo app;
 
@@ -28,6 +34,13 @@ class _InterceptionScreenState extends State<InterceptionScreen>
   bool _isLoading = true;
   int _minutesToday = 0;
   int _limitMinutes = 0;
+
+  // Countdown
+  int _countdown = 10;
+  Timer? _countdownTimer;
+  bool get _canAct => _countdown == 0;
+
+  // Fade-in
   late AnimationController _fadeController;
   late Animation<double> _fadeAnim;
 
@@ -36,7 +49,7 @@ class _InterceptionScreenState extends State<InterceptionScreen>
     super.initState();
     _fadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 350),
     );
     _fadeAnim = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
 
@@ -47,6 +60,7 @@ class _InterceptionScreenState extends State<InterceptionScreen>
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     _fadeController.dispose();
     super.dispose();
   }
@@ -61,29 +75,45 @@ class _InterceptionScreenState extends State<InterceptionScreen>
     }
 
     final stats = await RisingTideService.getStats(widget.app.packageName);
-    if (mounted) {
-      setState(() {
-        _minutesToday = stats['minutes'] ?? 0;
-        _limitMinutes = RisingTideService.getAppDailyLimit(widget.app.packageName).inMinutes;
-        _isLoading = false;
-      });
-      _fadeController.forward();
-      RisingTideLogger.logAppOpen(widget.app.packageName, stage);
-    }
+    if (!mounted) return;
+
+    setState(() {
+      _minutesToday = stats['minutes'] ?? 0;
+      _limitMinutes = RisingTideService.getAppDailyLimit(widget.app.packageName).inMinutes;
+      _isLoading = false;
+    });
+
+    _fadeController.forward();
+    RisingTideLogger.logAppOpen(widget.app.packageName, stage);
+    _startCountdown();
   }
 
+  void _startCountdown() {
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) { t.cancel(); return; }
+      setState(() {
+        if (_countdown > 0) {
+          _countdown--;
+        } else {
+          t.cancel();
+        }
+      });
+    });
+  }
+
+  /// Launches the app WITHOUT recording a conscious decision.
+  /// Used internally — not called on user action.
   Future<void> _launchApp() async {
     final pkg = widget.app.packageName;
 
     await StorageService.incrementTodayOpenCount(pkg);
     await db.startSession(pkg, widget.app.name);
 
-    // Register bypass BEFORE removing from blocklist
     ForegroundInterceptGuard.recordPostLaunchBypass(pkg,
         window: const Duration(seconds: 6));
 
-    // Atomically remove this app from the native blocklist so the Accessibility
-    // service cannot re-fire during the launch transition.
+    // Atomically remove this app from the native blocklist to prevent
+    // AccessibilityWatcherService from re-intercepting during the launch.
     final currentBlockList = StorageService.getFlaggedApps()
         .where((p) =>
             p != pkg && RisingTideService.getStage(p) != RisingTideStage.whisper)
@@ -95,21 +125,23 @@ class _InterceptionScreenState extends State<InterceptionScreen>
 
     InstalledApps.startApp(pkg);
 
-    // Restore the full blocklist after launch
+    // Restore full blocklist after a safe delay
     Future.delayed(const Duration(seconds: 5), () {
       RisingTideService.syncInterceptionState();
     });
   }
 
-  Future<void> _onContinue() async {
-    // Mark the limit warning as shown for today so the gate won't fire again
-    await RisingTideService.markLimitWarningShown(widget.app.packageName);
-    RisingTideLogger.logDecision(widget.app.packageName, "continue", "conscious");
+  /// User consciously chose to open. Records the decision so gate won't fire again today.
+  Future<void> _onOpenAnyway() async {
+    if (!_canAct) return;
+    await RisingTideService.markUserDecision(widget.app.packageName);
+    RisingTideLogger.logDecision(widget.app.packageName, "open_anyway", "conscious");
     await _launchApp();
   }
 
-  void _onGoBack() {
-    RisingTideLogger.logDecision(widget.app.packageName, "goback", "none");
+  /// User chose to close. Does NOT record the decision — gate will fire again next open.
+  void _onClose() {
+    RisingTideLogger.logDecision(widget.app.packageName, "close", "none");
     if (mounted) Navigator.pop(context);
   }
 
@@ -122,122 +154,131 @@ class _InterceptionScreenState extends State<InterceptionScreen>
       );
     }
 
-    final overMinutes = (_minutesToday - _limitMinutes).clamp(0, 99999);
+    final remaining = (_limitMinutes - _minutesToday).clamp(0, _limitMinutes);
+    final progress = _limitMinutes > 0
+        ? (_minutesToday / _limitMinutes).clamp(0.0, 1.0)
+        : 0.0;
 
     return FadeTransition(
       opacity: _fadeAnim,
       child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Stack(
-          children: [
-            // Blurred background
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(color: Colors.black.withValues(alpha: 0.55)),
-              ),
-            ),
-            // Content card
-            Center(
+        backgroundColor: Colors.black87,
+        body: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: SafeArea(
+            child: Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 28),
                 child: Container(
-                  padding: const EdgeInsets.all(28),
+                  padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.white10),
+                    color: const Color(0xFF1A2232),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: Colors.white12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        blurRadius: 40,
+                        spreadRadius: 4,
+                      ),
+                    ],
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // App icon
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(18),
                         child: widget.app.icon != null
-                            ? Image.memory(widget.app.icon!,
-                                width: 52, height: 52)
-                            : const Icon(Icons.apps,
-                                size: 52, color: Colors.white24),
+                            ? Image.memory(widget.app.icon!, width: 56, height: 56)
+                            : const Icon(Icons.apps, size: 56, color: Colors.white24),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 18),
 
-                      // Headline
-                      Text(
-                        "Time's up for today.",
+                      // Title
+                      const Text(
+                        "Heads up",
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white.withValues(alpha: 0.95),
+                          color: Colors.white,
                         ),
-                        textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 12),
 
-                      // Usage summary
-                      RichText(
+                      // Usage message
+                      Text(
+                        "You've used ${widget.app.name} for "
+                        "$_minutesToday ${_minutesToday == 1 ? 'minute' : 'minutes'} today.\n"
+                        "You have $remaining ${remaining == 1 ? 'minute' : 'minutes'} left "
+                        "of your ${LimitTimeFormat.dualLabel(_limitMinutes)} limit.",
                         textAlign: TextAlign.center,
-                        text: TextSpan(
-                          style: TextStyle(
-                            fontSize: 15,
-                            height: 1.6,
-                            color: Colors.white.withValues(alpha: 0.6),
-                          ),
-                          children: [
-                            TextSpan(
-                              text:
-                                  "You've used ${widget.app.name} for $_minutesToday ${_minutesToday == 1 ? 'minute' : 'minutes'} today",
-                            ),
-                            if (overMinutes > 0)
-                              TextSpan(
-                                text:
-                                    " — ${overMinutes} ${overMinutes == 1 ? 'minute' : 'minutes'} over your ${LimitTimeFormat.dualLabel(_limitMinutes)} limit",
-                              )
-                            else
-                              TextSpan(
-                                text:
-                                    ", your ${LimitTimeFormat.dualLabel(_limitMinutes)} limit",
-                              ),
-                            const TextSpan(text: '.'),
-                          ],
+                        style: TextStyle(
+                          fontSize: 15,
+                          height: 1.6,
+                          color: Colors.white.withValues(alpha: 0.65),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Usage progress bar
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          backgroundColor: Colors.white12,
+                          color: progress >= 1.0
+                              ? Colors.redAccent
+                              : progress >= 0.75
+                                  ? Colors.orange
+                                  : Colors.white70,
+                          minHeight: 5,
                         ),
                       ),
                       const SizedBox(height: 28),
 
-                      // Continue button
+                      // Close button (immediately available)
                       SizedBox(
                         width: double.infinity,
-                        child: FilledButton(
-                          onPressed: _onContinue,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          child: const Text(
-                            "Open anyway",
+                        child: TextButton(
+                          onPressed: _onClose,
+                          child: Text(
+                            "Close",
                             style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
+                              color: Colors.white.withValues(alpha: 0.45),
+                              fontSize: 14,
                             ),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
 
-                      // Go back button
-                      SizedBox(
-                        width: double.infinity,
-                        child: TextButton(
-                          onPressed: _onGoBack,
-                          child: Text(
-                            "Go back",
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.45),
-                              fontSize: 14,
+                      // "Open anyway" — greyed and disabled for 10 seconds
+                      AnimatedOpacity(
+                        duration: const Duration(milliseconds: 400),
+                        opacity: _canAct ? 1.0 : 0.35,
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: _canAct ? _onOpenAnyway : null,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.black,
+                              disabledBackgroundColor: Colors.white24,
+                              disabledForegroundColor: Colors.white38,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Text(
+                              _canAct
+                                  ? "Open anyway"
+                                  : "Open anyway  ($_countdown)",
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                              ),
                             ),
                           ),
                         ),
@@ -247,7 +288,7 @@ class _InterceptionScreenState extends State<InterceptionScreen>
                 ),
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

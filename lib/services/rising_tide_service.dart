@@ -25,11 +25,11 @@ class RisingTideService {
       return RisingTideStage.whisper;
     }
 
-    // Only show the gate when the user has used their FULL daily limit (100%).
-    // One gentle reminder per day — after they've acknowledged it, let them continue.
-    if (usageMinutes >= limitMin) {
-      // If already shown today, let them open freely (conscious decision made).
-      if (_hasShownLimitWarningToday(packageName)) {
+    // Gate fires at 50% of the daily limit.
+    // Only suppressed if the user made a CONSCIOUS decision ("Open anyway") today.
+    // Closing the gate without deciding keeps it active for next open.
+    if (usageMinutes >= (limitMin * 0.5).floor()) {
+      if (_hasUserDecidedToday(packageName)) {
         return RisingTideStage.whisper;
       }
       return RisingTideStage.dim;
@@ -38,17 +38,19 @@ class RisingTideService {
     return RisingTideStage.whisper;
   }
 
-  static String _limitWarningKey(String packageName) {
+  static String _decisionKey(String packageName) {
     final today = _localDayKey(DateTime.now());
-    return 'rt_limit_shown_${today}_$packageName';
+    return 'rt_dim_decided_${today}_$packageName';
   }
 
-  static bool _hasShownLimitWarningToday(String packageName) {
-    return StorageService.getString(_limitWarningKey(packageName)) == 'true';
+  static bool _hasUserDecidedToday(String packageName) {
+    return StorageService.getString(_decisionKey(packageName)) == 'true';
   }
 
-  static Future<void> markLimitWarningShown(String packageName) async {
-    await StorageService.setString(_limitWarningKey(packageName), 'true');
+  /// Call this ONLY when the user consciously taps "Open anyway".
+  /// Do NOT call on "Close" or back-press — that keeps the gate alive.
+  static Future<void> markUserDecision(String packageName) async {
+    await StorageService.setString(_decisionKey(packageName), 'true');
   }
 
   /// Synchronizes the list of apps that need interception with the native Accessibility service.
