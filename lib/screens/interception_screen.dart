@@ -12,6 +12,7 @@ import '../database/database_provider.dart';
 import '../services/storage_service.dart';
 import '../services/app_lock_manager.dart';
 import '../services/foreground_intercept_guard.dart';
+import '../services/native_service.dart';
 import '../utils/limit_time_format.dart';
 import '../services/todo_service.dart';
 import '../database/kora_database.dart';
@@ -110,20 +111,34 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   }
 
   Future<void> _launchApp({bool afterInterceptionFlow = false}) async {
-    // Increment open count exactly once, at the point of actual launch
-    await StorageService.incrementTodayOpenCount(widget.app.packageName);
-    // Log session in database
-    await db.startSession(widget.app.packageName, widget.app.name);
-    // Always record bypass so the Accessibility service doesn't re-intercept immediately
-    ForegroundInterceptGuard.recordPostLaunchBypass(widget.app.packageName);
+    final pkg = widget.app.packageName;
 
-    // Pop the InterceptionScreen FIRST, then let Flutter settle before foregrounding the app.
-    // Increased to 200ms to avoid focus race conditions where the Launcher might "steal" back focus
-    // immediately after the pop animation starts.
+    await StorageService.incrementTodayOpenCount(pkg);
+    await db.startSession(pkg, widget.app.name);
+
+    // Register bypass FIRST so AccessibilityWatcherService ignores the next
+    // focus event for this package.
+    ForegroundInterceptGuard.recordPostLaunchBypass(pkg,
+        window: const Duration(seconds: 6));
+
+    // Atomically remove this app from the native blocklist so the Accessibility
+    // service cannot re-fire the interception during the launch transition.
+    // Without this, the service still sees the app as blocked and immediately
+    // brings Kora to the foreground, causing the "closes the app" bug.
+    final currentBlockList = StorageService.getFlaggedApps()
+        .where((p) => p != pkg && RisingTideService.getStage(p) != RisingTideStage.whisper)
+        .toList();
+    await NativeService.sendBlockedApps(currentBlockList);
+
     if (mounted) Navigator.pop(context);
     await Future.delayed(const Duration(milliseconds: 200));
 
-    InstalledApps.startApp(widget.app.packageName);
+    InstalledApps.startApp(pkg);
+
+    // Restore the full native blocklist after the launch transition completes.
+    Future.delayed(const Duration(seconds: 5), () {
+      RisingTideService.syncInterceptionState();
+    });
   }
 
   @override

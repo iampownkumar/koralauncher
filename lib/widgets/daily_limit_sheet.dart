@@ -54,6 +54,10 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
       if (!ok || !mounted) return;
     }
     await StorageService.setAppDailyLimitMinutes(widget.packageName, m);
+    // Auto-flag the app when a limit is set so the RT icon appears immediately
+    if (!StorageService.isAppFlagged(widget.packageName)) {
+      await StorageService.toggleFlaggedApp(widget.packageName); // toggles off→on
+    }
     await RisingTideService.syncInterceptionState();
     if (mounted) Navigator.of(context).pop();
   }
