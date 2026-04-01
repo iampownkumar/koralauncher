@@ -24,33 +24,32 @@ class RisingTideService {
     if (limitMin <= 0) {
       return RisingTideStage.whisper;
     }
+    final usagePercent = usageMinutes / limitMin;
+    final overrides = _getTodayOverrideCount(packageName);
 
-    // Gate fires at 50% of the daily limit.
-    // Only suppressed if the user made a CONSCIOUS decision ("Open anyway") today.
-    // Closing the gate without deciding keeps it active for next open.
-    if (usageMinutes >= (limitMin * 0.5).floor()) {
-      if (_hasUserDecidedToday(packageName)) {
-        return RisingTideStage.whisper;
+    RisingTideStage stage;
+    if (usagePercent >= 1.0 || overrides >= 2) {
+      stage = RisingTideStage.mirror;
+    } else if (usagePercent >= 0.5) {
+      // Only show the Dim gate if the user hasn't consciously decided today
+      if (!_hasUserDecidedToday(packageName)) {
+        stage = RisingTideStage.dim;
+      } else {
+        stage = RisingTideStage.whisper;
       }
-      return RisingTideStage.dim;
+    } else {
+      stage = RisingTideStage.whisper;
     }
 
-    return RisingTideStage.whisper;
-  }
+    // Reopen lock: keep the same gate active; for whisper promote to dim.
+    if (isPackageLocked(packageName)) {
+      if (stage == RisingTideStage.whisper) {
+        return RisingTideStage.dim;
+      }
+      return stage;
+    }
 
-  static String _decisionKey(String packageName) {
-    final today = _localDayKey(DateTime.now());
-    return 'rt_dim_decided_${today}_$packageName';
-  }
-
-  static bool _hasUserDecidedToday(String packageName) {
-    return StorageService.getString(_decisionKey(packageName)) == 'true';
-  }
-
-  /// Call this ONLY when the user consciously taps "Open anyway".
-  /// Do NOT call on "Close" or back-press — that keeps the gate alive.
-  static Future<void> markUserDecision(String packageName) async {
-    await StorageService.setString(_decisionKey(packageName), 'true');
+    return stage;
   }
 
   /// Synchronizes the list of apps that need interception with the native Accessibility service.
@@ -90,7 +89,7 @@ class RisingTideService {
   }
 
   /// Returns how many times the user has chosen to "Continue" today for this app.
-  static int getTodayOverrideCount(String packageName) {
+  static int _getTodayOverrideCount(String packageName) {
     final today = _localDayKey(DateTime.now());
     final key = 'rt_overrides_${today}_$packageName';
     return int.tryParse(StorageService.getString(key) ?? '0') ?? 0;
@@ -106,12 +105,27 @@ class RisingTideService {
   }
 
   static Future<void> recordOverride(String packageName) async {
-    final count = getTodayOverrideCount(packageName);
+    final count = _getTodayOverrideCount(packageName);
     final today = _localDayKey(DateTime.now());
     final key = 'rt_overrides_${today}_$packageName';
     await StorageService.setString(key, (count + 1).toString());
-    // Sync state immediately to native
     await syncInterceptionState();
+  }
+
+  /// Call ONLY when the user consciously taps "Open anyway" on the Dim gate.
+  /// Sets a flag so the gate won't fire again today for this app.
+  static Future<void> markUserDecision(String packageName) async {
+    final today = _localDayKey(DateTime.now());
+    await StorageService.setString(
+      'rt_dim_decided_${today}_$packageName',
+      'true',
+    );
+  }
+
+  static bool _hasUserDecidedToday(String packageName) {
+    final today = _localDayKey(DateTime.now());
+    return StorageService.getString('rt_dim_decided_${today}_$packageName') ==
+        'true';
   }
 
   static String _localDayKey(DateTime now) {
@@ -126,7 +140,10 @@ class RisingTideService {
   /// If the user reopens the app within this window, they are forced back to the interception screen.
   static Future<void> setReopenLock(String packageName) async {
     final expiry = DateTime.now().add(const Duration(minutes: 5));
-    await StorageService.setString(_lockKeyPrefix + packageName, expiry.toIso8601String());
+    await StorageService.setString(
+      _lockKeyPrefix + packageName,
+      expiry.toIso8601String(),
+    );
     await RisingTideLogger.logReopenLockApplied(packageName);
   }
 
@@ -172,8 +189,8 @@ class RisingTideService {
   /// Gets the cached intention or fetches it from storage.
   static String? getDailyIntention() {
     final now = DateTime.now();
-    if (_cachedIntention != null && 
-        _lastIntentionFetch != null && 
+    if (_cachedIntention != null &&
+        _lastIntentionFetch != null &&
         _lastIntentionFetch!.day == now.day) {
       return _cachedIntention;
     }

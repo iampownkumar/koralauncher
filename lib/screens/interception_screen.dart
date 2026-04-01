@@ -1,5 +1,5 @@
-import 'dart:async';
 import 'dart:ui';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:installed_apps/app_info.dart';
 import 'package:installed_apps/installed_apps.dart';
@@ -7,19 +7,14 @@ import '../services/rising_tide_service.dart';
 import '../models/rising_tide_stage.dart';
 import '../services/rising_tide_logger.dart';
 import '../services/usage_service.dart';
+import '../widgets/gate_settings_sheet.dart';
 import '../database/database_provider.dart';
 import '../services/storage_service.dart';
 import '../services/foreground_intercept_guard.dart';
 import '../services/native_service.dart';
 import '../utils/limit_time_format.dart';
+import '../services/todo_service.dart';
 
-/// Rising Tide Stage 2 — Dim Gate
-///
-/// Shown when the user opens a flagged app at ≥50% of their daily limit.
-/// The gate is unskippable for 10 seconds. After that the user must make
-/// a CONSCIOUS CHOICE:
-///   • "Open anyway"  → records decision, app opens, gate won't fire again today
-///   • "Close"        → does NOT record, so gate fires again next open
 class InterceptionScreen extends StatefulWidget {
   final AppInfo app;
 
@@ -29,30 +24,25 @@ class InterceptionScreen extends StatefulWidget {
   State<InterceptionScreen> createState() => _InterceptionScreenState();
 }
 
-class _InterceptionScreenState extends State<InterceptionScreen>
-    with SingleTickerProviderStateMixin {
+class _InterceptionScreenState extends State<InterceptionScreen> {
+  late RisingTideStage _stage;
   bool _isLoading = true;
+  // Stats for Stage 2–4
+  int _opensToday = 0;
   int _minutesToday = 0;
-  int _limitMinutes = 0;
+  String? _dailyIntention;
 
-  // Countdown
-  int _countdown = 10;
+  // Flow control
+  int _countdownSeconds = 5;
   Timer? _countdownTimer;
-  bool get _canAct => _countdown == 0;
 
-  // Fade-in
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnim;
 
   @override
   void initState() {
     super.initState();
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 350),
-    );
-    _fadeAnim = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
-
+    // Defer init until after first frame so the route is fully mounted.
+    // Without this, Navigator.pop() called from Whisper fast-path crashes
+    // because the route isn't yet in the navigator stack.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _initStage();
     });
@@ -61,7 +51,6 @@ class _InterceptionScreenState extends State<InterceptionScreen>
   @override
   void dispose() {
     _countdownTimer?.cancel();
-    _fadeController.dispose();
     super.dispose();
   }
 
@@ -70,53 +59,63 @@ class _InterceptionScreenState extends State<InterceptionScreen>
     final stage = RisingTideService.getStage(widget.app.packageName);
 
     if (stage == RisingTideStage.whisper) {
+      // Whisper: no interception, launch directly
       await _launchApp();
       return;
     }
 
     final stats = await RisingTideService.getStats(widget.app.packageName);
-    if (!mounted) return;
+    _dailyIntention = RisingTideService.getDailyIntention();
 
-    setState(() {
-      _minutesToday = stats['minutes'] ?? 0;
-      _limitMinutes = RisingTideService.getAppDailyLimit(widget.app.packageName).inMinutes;
-      _isLoading = false;
-    });
-
-    _fadeController.forward();
-    RisingTideLogger.logAppOpen(widget.app.packageName, stage);
-    _startCountdown();
-  }
-
-  void _startCountdown() {
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) { t.cancel(); return; }
+    if (mounted) {
       setState(() {
-        if (_countdown > 0) {
-          _countdown--;
-        } else {
-          t.cancel();
-        }
+        _stage = stage;
+        _opensToday = stats['opens'] ?? 0;
+        _minutesToday = stats['minutes'] ?? 0;
+        _isLoading = false;
+        _startInitialCountdown();
       });
+      RisingTideLogger.logAppOpen(widget.app.packageName, _stage);
+    }
+  }
+
+  void _startInitialCountdown() {
+    _countdownTimer?.cancel();
+    // Dim is unskippable for 10s; Mirror/others use 5s
+    _countdownSeconds = (_stage == RisingTideStage.dim) ? 5 : 5;
+
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          if (_countdownSeconds > 0) {
+            _countdownSeconds--;
+          } else {
+            _countdownTimer?.cancel();
+          }
+        });
+      } else {
+        timer.cancel();
+      }
     });
   }
 
-  /// Launches the app WITHOUT recording a conscious decision.
-  /// Used internally — not called on user action.
-  Future<void> _launchApp() async {
+  Future<void> _launchApp({bool afterInterceptionFlow = false}) async {
     final pkg = widget.app.packageName;
 
     await StorageService.incrementTodayOpenCount(pkg);
     await db.startSession(pkg, widget.app.name);
 
+    // Register bypass FIRST so AccessibilityWatcherService ignores the next
+    // focus event for this package.
     ForegroundInterceptGuard.recordPostLaunchBypass(pkg,
         window: const Duration(seconds: 6));
 
-    // Atomically remove this app from the native blocklist to prevent
-    // AccessibilityWatcherService from re-intercepting during the launch.
+    // Atomically remove this app from the native blocklist so the Accessibility
+    // service cannot re-fire the interception during the launch transition.
+    // Without this, the service still sees the app as blocked and immediately
+    // brings Kora to the foreground, causing the "closes the app" bug.
     final currentBlockList = StorageService.getFlaggedApps()
-        .where((p) =>
-            p != pkg && RisingTideService.getStage(p) != RisingTideStage.whisper)
+        .where((p) => p != pkg && RisingTideService.getStage(p) != RisingTideStage.whisper)
         .toList();
     await NativeService.sendBlockedApps(currentBlockList);
 
@@ -125,24 +124,10 @@ class _InterceptionScreenState extends State<InterceptionScreen>
 
     InstalledApps.startApp(pkg);
 
-    // Restore full blocklist after a safe delay
+    // Restore the full native blocklist after the launch transition completes.
     Future.delayed(const Duration(seconds: 5), () {
       RisingTideService.syncInterceptionState();
     });
-  }
-
-  /// User consciously chose to open. Records the decision so gate won't fire again today.
-  Future<void> _onOpenAnyway() async {
-    if (!_canAct) return;
-    await RisingTideService.markUserDecision(widget.app.packageName);
-    RisingTideLogger.logDecision(widget.app.packageName, "open_anyway", "conscious");
-    await _launchApp();
-  }
-
-  /// User chose to close. Does NOT record the decision — gate will fire again next open.
-  void _onClose() {
-    RisingTideLogger.logDecision(widget.app.packageName, "close", "none");
-    if (mounted) Navigator.pop(context);
   }
 
   @override
@@ -154,138 +139,570 @@ class _InterceptionScreenState extends State<InterceptionScreen>
       );
     }
 
-    final remaining = (_limitMinutes - _minutesToday).clamp(0, _limitMinutes);
-    final progress = _limitMinutes > 0
-        ? (_minutesToday / _limitMinutes).clamp(0.0, 1.0)
-        : 0.0;
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F172A),
+      body: Stack(
+        children: [
+          // Background - Semi-transparent app icon or just slate
+          Positioned.fill(child: Container(color: const Color(0xFF0F172A))),
 
-    return FadeTransition(
-      opacity: _fadeAnim,
-      child: Scaffold(
-        backgroundColor: Colors.black87,
-        body: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: SafeArea(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 28),
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(28, 28, 28, 24),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1A2232),
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: Colors.white12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.4),
-                        blurRadius: 40,
-                        spreadRadius: 4,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // App icon
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
-                        child: widget.app.icon != null
-                            ? Image.memory(widget.app.icon!, width: 56, height: 56)
-                            : const Icon(Icons.apps, size: 56, color: Colors.white24),
-                      ),
-                      const SizedBox(height: 18),
-
-                      // Title
-                      const Text(
-                        "Heads up",
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Usage message
-                      Text(
-                        "You've used ${widget.app.name} for "
-                        "$_minutesToday ${_minutesToday == 1 ? 'minute' : 'minutes'} today.\n"
-                        "You have $remaining ${remaining == 1 ? 'minute' : 'minutes'} left "
-                        "of your ${LimitTimeFormat.dualLabel(_limitMinutes)} limit.",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 15,
-                          height: 1.6,
-                          color: Colors.white.withValues(alpha: 0.65),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Usage progress bar
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          backgroundColor: Colors.white12,
-                          color: progress >= 1.0
-                              ? Colors.redAccent
-                              : progress >= 0.75
-                                  ? Colors.orange
-                                  : Colors.white70,
-                          minHeight: 5,
-                        ),
-                      ),
-                      const SizedBox(height: 28),
-
-                      // Close button (immediately available)
-                      SizedBox(
-                        width: double.infinity,
-                        child: TextButton(
-                          onPressed: _onClose,
-                          child: Text(
-                            "Close",
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.45),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-
-                      // "Open anyway" — greyed and disabled for 10 seconds
-                      AnimatedOpacity(
-                        duration: const Duration(milliseconds: 400),
-                        opacity: _canAct ? 1.0 : 0.35,
-                        child: SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed: _canAct ? _onOpenAnyway : null,
-                            style: FilledButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Colors.black,
-                              disabledBackgroundColor: Colors.white24,
-                              disabledForegroundColor: Colors.white38,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: Text(
-                              _canAct
-                                  ? "Open anyway"
-                                  : "Open anyway  ($_countdown)",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+          // Glassmorphic Layer
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(
+                sigmaX: _getSigma(),
+                sigmaY: _getSigma(),
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      const Color(
+                        0xFF1E293B,
+                      ).withValues(alpha: _getOverlayOpacity() * 0.7),
+                      const Color(
+                        0xFF0F172A,
+                      ).withValues(alpha: _getOverlayOpacity()),
                     ],
                   ),
                 ),
+              ),
+            ),
+          ),
+
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                children: [
+                  const SizedBox(height: 40),
+                  _buildAppHeader(),
+                  const Spacer(),
+                  _buildStageContent(),
+                  const Spacer(),
+                  _buildActionButtons(),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  double _getSigma() {
+    switch (_stage) {
+      case RisingTideStage.whisper:
+        return 5;
+      case RisingTideStage.dim:
+        return 15;
+      case RisingTideStage.mirror:
+        return 30;
+    }
+  }
+
+  double _getOverlayOpacity() {
+    switch (_stage) {
+      case RisingTideStage.whisper:
+        return 0.2;
+      case RisingTideStage.dim:
+        return 0.4;
+      case RisingTideStage.mirror:
+        return 0.6;
+    }
+  }
+
+  Widget _buildAppHeader() {
+    return Column(
+      children: [
+        Hero(
+          tag: widget.app.packageName,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: widget.app.icon != null
+                ? Image.memory(widget.app.icon!, width: 64, height: 64)
+                : const Icon(Icons.apps, size: 64, color: Colors.white24),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          widget.app.name,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.white38,
+            letterSpacing: 1.2,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStageContent() {
+    switch (_stage) {
+      case RisingTideStage.dim:
+        return _buildDimContent();
+      case RisingTideStage.mirror:
+        return _buildMirrorContent();
+      default:
+        return const SizedBox();
+    }
+  }
+
+  Widget _buildDimContent() {
+    final limitMinutes = RisingTideService.getAppDailyLimit(
+      widget.app.packageName,
+    ).inMinutes;
+    final remaining = (limitMinutes - _minutesToday).clamp(0, limitMinutes);
+    final progress = limitMinutes > 0
+        ? (_minutesToday / limitMinutes).clamp(0.0, 1.0)
+        : 0.0;
+
+    return Column(
+      children: [
+        Text(
+          'Heads up',
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: Colors.white.withValues(alpha: 0.5),
+            letterSpacing: 2,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          "You've used ${widget.app.name} for "
+          "$_minutesToday ${_minutesToday == 1 ? 'minute' : 'minutes'} today.",
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            height: 1.3,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 10),
+        Text(
+          "You have $remaining ${remaining == 1 ? 'minute' : 'minutes'} left "
+          "of your ${LimitTimeFormat.dualLabel(limitMinutes)} limit.",
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.white.withValues(alpha: 0.55),
+            height: 1.5,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 20),
+        // Progress bar
+        LayoutBuilder(
+          builder: (ctx, constraints) {
+            return Container(
+              height: 5,
+              width: constraints.maxWidth * 0.65,
+              decoration: BoxDecoration(
+                color: Colors.white12,
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 600),
+                  width: constraints.maxWidth * 0.65 * progress,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: progress >= 0.9
+                        ? Colors.redAccent
+                        : progress >= 0.7
+                        ? Colors.orange
+                        : Colors.white70,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Opens today: $_opensToday · Limit ${LimitTimeFormat.dualLabel(limitMinutes)}',
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.white.withValues(alpha: 0.3),
+          ),
+          textAlign: TextAlign.center,
+        ),
+        _buildGateSettingsLink(),
+      ],
+    );
+  }
+
+  Widget _buildMirrorContent() {
+    final limitMinutes = RisingTideService.getAppDailyLimit(
+      widget.app.packageName,
+    ).inMinutes;
+    // Top pending todo — use cast to null-safe version to avoid 'Bad state: No element'
+    final topTodo = TodoService.todos.cast<dynamic>().firstWhere(
+      (t) => !(t.isCompleted as bool),
+      orElse: () => null,
+    );
+    final hasPendingTodo = topTodo != null;
+
+    return Column(
+      children: [
+        // Red "Limit Reached" badge
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.redAccent.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.timer_off_rounded,
+                size: 14,
+                color: Colors.redAccent,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'LIMIT REACHED  ·  ${LimitTimeFormat.dualLabel(limitMinutes)}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.redAccent,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 28),
+
+        // The mirror question — pulled from their actual to-do list
+        if (hasPendingTodo) ...[
+          Text(
+            'You said you\'d do this today:',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.white.withValues(alpha: 0.4),
+              letterSpacing: 0.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            ),
+            child: Text(
+              (topTodo as dynamic).title as String,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Does opening ${widget.app.name} help with that?',
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.white.withValues(alpha: 0.5),
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ] else if (_dailyIntention != null) ...[
+          // Fallback to daily intention if no todos
+          Text(
+            'Your note for today:',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.white.withValues(alpha: 0.4),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '"$_dailyIntention"',
+            style: const TextStyle(
+              fontSize: 22,
+              fontStyle: FontStyle.italic,
+              color: Colors.white,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Does opening ${widget.app.name} align with this?',
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.white.withValues(alpha: 0.5),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ] else ...[
+          // No todo, no intention — bare mirror
+          Text(
+            'You\'ve hit your limit for ${widget.app.name} today.',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w300,
+              color: Colors.white.withValues(alpha: 0.7),
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Think for a moment before continuing.',
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.white.withValues(alpha: 0.4),
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+
+        const SizedBox(height: 24),
+        _buildStatsRow(),
+        _buildGateSettingsLink(),
+      ],
+    );
+  }
+
+  void _showGateSettings() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => GateSettingsSheet(
+        packageName: widget.app.packageName,
+        appLabel: widget.app.name,
+        initialLimitMinutes: StorageService.getAppDailyLimitMinutes(
+          widget.app.packageName,
+        ),
+        initialIntention: _dailyIntention,
+        onApply: (limit, intentionText) async {
+          await StorageService.setAppDailyLimitMinutes(
+            widget.app.packageName,
+            limit,
+          );
+          if (intentionText != null && intentionText.isNotEmpty) {
+            await StorageService.setDailyIntention(intentionText);
+            await db.saveIntention(intentionText);
+          }
+          RisingTideService.invalidateIntentionCache();
+          await RisingTideService.syncInterceptionState();
+          await UsageService.refreshUsage();
+          final newStage = RisingTideService.getStage(widget.app.packageName);
+          if (!mounted) return;
+          if (newStage == RisingTideStage.whisper) {
+            await _launchApp();
+            return;
+          }
+          final stats = await RisingTideService.getStats(
+            widget.app.packageName,
+          );
+          if (mounted) {
+            setState(() {
+              _stage = newStage;
+              _opensToday = stats['opens'] ?? 0;
+              _minutesToday = stats['minutes'] ?? 0;
+              _dailyIntention = RisingTideService.getDailyIntention();
+            });
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildGateSettingsLink() {
+    return TextButton.icon(
+      onPressed: _showGateSettings,
+      icon: Icon(
+        Icons.tune,
+        size: 18,
+        color: Colors.white.withValues(alpha: 0.4),
+      ),
+      label: Text(
+        'Edit limit & optional note',
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.4),
+          fontSize: 13,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsRow() {
+    final limit = RisingTideService.getAppDailyLimit(
+      widget.app.packageName,
+    ).inMinutes;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _buildStatItem("Opens Today", "$_opensToday"),
+        const SizedBox(width: 40),
+        _buildStatItem(
+          "Time vs limit",
+          "${LimitTimeFormat.compact(_minutesToday)} / ${LimitTimeFormat.compact(limit)}",
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatItem(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, color: Colors.white38),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons() {
+    final bool countdownActive = _countdownSeconds > 0;
+
+    // DIM: 10s unskippable. "Close" exits without recording. "Open anyway"
+    // records the decision so the gate won't fire for the rest of the day.
+    if (_stage == RisingTideStage.dim) {
+      return Column(
+        children: [
+          _buildGlassButton(
+            title: "Close",
+            onTap: () {
+              RisingTideLogger.logDecision(
+                widget.app.packageName,
+                "close",
+                "none",
+              );
+              if (mounted) Navigator.pop(context);
+            },
+            isPrimary: true,
+          ),
+          const SizedBox(height: 16),
+          AnimatedOpacity(
+            duration: const Duration(milliseconds: 400),
+            opacity: countdownActive ? 0.35 : 1.0,
+            child: _buildGlassButton(
+              title: countdownActive
+                  ? "Open anyway  ($_countdownSeconds)"
+                  : "Open anyway",
+              onTap: countdownActive
+                  ? null
+                  : () async {
+                      await RisingTideService.markUserDecision(
+                        widget.app.packageName,
+                      );
+                      RisingTideLogger.logDecision(
+                        widget.app.packageName,
+                        "open_anyway",
+                        "conscious",
+                      );
+                      await _launchApp(afterInterceptionFlow: true);
+                    },
+              isPrimary: false,
+              isDisabled: countdownActive,
+            ),
+          ),
+        ],
+      );
+    }
+
+    // MIRROR: 5s countdown then "Continue anyway"
+    return Column(
+      children: [
+        _buildGlassButton(
+          title: "Never mind, go back",
+          onTap: () {
+            RisingTideLogger.logDecision(
+              widget.app.packageName,
+              "goback",
+              "none",
+            );
+            if (mounted) Navigator.pop(context);
+          },
+          isPrimary: true,
+        ),
+        const SizedBox(height: 16),
+        _buildGlassButton(
+          title: countdownActive
+              ? "Wait ${_countdownSeconds}s"
+              : "Continue anyway",
+          onTap: countdownActive
+              ? null
+              : () async {
+                  RisingTideLogger.logDecision(
+                    widget.app.packageName,
+                    "continue",
+                    "conscious",
+                  );
+                  await RisingTideService.recordOverride(
+                    widget.app.packageName,
+                  );
+                  await RisingTideService.setReopenLock(widget.app.packageName);
+                  await _launchApp(afterInterceptionFlow: true);
+                },
+          isPrimary: false,
+          isDisabled: countdownActive,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGlassButton({
+    required String title,
+    required VoidCallback? onTap,
+    bool isPrimary = false,
+    bool isDisabled = false,
+  }) {
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 300),
+      opacity: isDisabled ? 0.3 : 1.0,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          decoration: BoxDecoration(
+            color: isPrimary
+                ? Colors.white
+                : Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Center(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: isPrimary ? Colors.black : Colors.white,
               ),
             ),
           ),
