@@ -291,6 +291,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _showGoalSetter = false;
   bool _isDefaultLauncher = true;
   bool _hasUsagePermission = true;
+  bool _hasAccessibilityPermission = true;
   bool _pulseIntention = false;
   String? _goal;
 
@@ -325,6 +326,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _refreshHomeState() async {
     final isDefault = await NativeService.isDefaultLauncher();
     final hasUsage = await NativeService.hasUsagePermission();
+    final hasAccessibility = await NativeService.hasAccessibilityPermission();
     await UsageService.refreshUsage();
     await TodoService.refreshTodos();
     final newGoal = StorageService.getDailyIntention();
@@ -333,10 +335,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     
     if (_isDefaultLauncher != isDefault || 
         _hasUsagePermission != hasUsage || 
+        _hasAccessibilityPermission != hasAccessibility ||
         _goal != newGoal) {
       setState(() {
         _isDefaultLauncher = isDefault;
         _hasUsagePermission = hasUsage;
+        _hasAccessibilityPermission = hasAccessibility;
         _goal = newGoal;
       });
     } else {
@@ -476,7 +480,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         children: [
                           if (!_isDefaultLauncher)
                             _buildDefaultLauncherBanner(),
-                          if (!_hasUsagePermission)
+                          if (!_hasAccessibilityPermission)
+                            _buildAccessibilityPermissionBanner(),
+                          if (_hasAccessibilityPermission && !_hasUsagePermission)
                             _buildUsagePermissionBanner(),
                           _buildTopInfoBar(),
 
@@ -761,6 +767,87 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 fontWeight: FontWeight.w600,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccessibilityPermissionBanner() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.blueAccent.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.security, size: 24, color: Colors.white),
+          const SizedBox(width: 16),
+          const Expanded(
+            child: Text(
+              "Enable Rising Tide protection",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor: const Color(0xFF1E293B),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  title: const Text(
+                    "Accessibility Requirement",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  content: const Text(
+                    "Kora uses Accessibility Services to detect when you open habit-forming apps.\n\n"
+                    "This allows us to show you the intentional delay screens and help you stay focused on your goals.\n\n"
+                    "We do NOT use this to collect any private data, keystrokes, or passwords. It is strictly used for app interception.",
+                    style: TextStyle(color: Colors.white70, height: 1.4),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await NativeService.openAccessibilitySettings();
+                      },
+                      child: const Text("I Understand"),
+                    ),
+                  ],
+                ),
+              );
+            },
+            child: const Text("ENABLE", style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -3065,6 +3152,15 @@ class NativeService {
     }
   }
 
+  static Future<bool> hasAccessibilityPermission() async {
+    try {
+      final bool result = await platform.invokeMethod<bool>('hasAccessibilityPermission') ?? false;
+      return result;
+    } catch (e) {
+      return false;
+    }
+  }
+
   static Future<void> openUsageSettings() async {
     try {
       await platform.invokeMethod('openUsageSettings');
@@ -3076,6 +3172,14 @@ class NativeService {
   static Future<void> openDefaultLauncherSettings() async {
     try {
       await platform.invokeMethod('openDefaultLauncherSettings');
+    } catch (e) {
+      print("Failed: $e");
+    }
+  }
+
+  static Future<void> openAccessibilitySettings() async {
+    try {
+      await platform.invokeMethod('openAccessibilitySettings');
     } catch (e) {
       print("Failed: $e");
     }

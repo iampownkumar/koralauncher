@@ -65,11 +65,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await UsageService.refreshUsage();
     await TodoService.refreshTodos();
     final newGoal = StorageService.getDailyIntention();
-    
+
     if (!mounted) return;
-    
-    if (_isDefaultLauncher != isDefault || 
-        _hasUsagePermission != hasUsage || 
+
+    if (_isDefaultLauncher != isDefault ||
+        _hasUsagePermission != hasUsage ||
         _hasAccessibilityPermission != hasAccessibility ||
         _goal != newGoal) {
       setState(() {
@@ -87,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await LauncherService.refreshApps();
     await TodoService.init();
     await _refreshHomeState();
-    
+
     if (!StorageService.hasCompletedOnboarding()) {
       if (mounted) {
         setState(() {
@@ -217,7 +217,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             _buildDefaultLauncherBanner(),
                           if (!_hasAccessibilityPermission)
                             _buildAccessibilityPermissionBanner(),
-                          if (_hasAccessibilityPermission && !_hasUsagePermission)
+                          if (_hasAccessibilityPermission &&
+                              !_hasUsagePermission)
                             _buildUsagePermissionBanner(),
                           _buildTopInfoBar(),
 
@@ -333,9 +334,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         children: [
           _buildSetGoalPill(),
           const SizedBox(width: 12),
-          Expanded(
-            child: _buildCenterIntentionText(),
-          ),
+          Expanded(child: _buildCenterIntentionText()),
           const SizedBox(width: 12),
           if (_hasUsagePermission) _buildUsageStats(),
         ],
@@ -377,7 +376,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildCenterIntentionText() {
     final hasGoal = _goal != null && _goal!.isNotEmpty;
-    
+
     Widget textWidget = Text(
       hasGoal ? _goal! : "No intention set",
       textAlign: TextAlign.center,
@@ -409,7 +408,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         child: textWidget,
       );
     }
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -562,7 +561,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+                      child: const Text(
+                        "Cancel",
+                        style: TextStyle(color: Colors.grey),
+                      ),
                     ),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
@@ -582,7 +584,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
               );
             },
-            child: const Text("ENABLE", style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text(
+              "ENABLE",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
