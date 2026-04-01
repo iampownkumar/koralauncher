@@ -6,6 +6,7 @@ import '../services/native_service.dart';
 import 'app_drawer_screen.dart';
 import '../widgets/intention_setter.dart';
 import 'usage_dashboard_screen.dart';
+import 'tide_pool_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
 import 'package:upgrader/upgrader.dart';
@@ -21,7 +22,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _showIntentionSetter = false;
   bool _isDefaultLauncher = true;
   bool _hasUsagePermission = true;
-  bool _hasSkippedIntentionTodaySession = false;
   String? _intention;
 
   @override
@@ -75,21 +75,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _checkIntention() {
     _intention = StorageService.getDailyIntention();
-    if (_intention == null &&
-        !StorageService.hasSetIntentionToday() &&
-        !_hasSkippedIntentionTodaySession) {
-      if (mounted) {
-        setState(() {
-          _showIntentionSetter = true;
-        });
-      }
-    } else {
-      if (mounted) {
-        setState(() {
-          _showIntentionSetter = false;
-        });
-      }
-    }
+    if (mounted) setState(() {});
   }
 
   void _openAppDrawer() {
@@ -153,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 final velocity = details.primaryVelocity;
                 if (velocity != null) {
                   if (velocity > 300) {
-                    // Horizontal Swipe Right -> Open Dashboard
+                    // Swipe right → Usage dashboard
                     Navigator.push(
                       context,
                       PageRouteBuilder(
@@ -169,7 +155,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                     );
                   } else if (velocity < -300) {
-                    // Horizontal Swipe Left -> Reserved for future feature!
+                    // Swipe left → Tide pool (reflection + flagged list)
+                    Navigator.push(
+                      context,
+                      PageRouteBuilder(
+                        pageBuilder: (context, animation, secondaryAnimation) =>
+                            const TidePoolScreen(),
+                        transitionDuration: const Duration(milliseconds: 340),
+                        transitionsBuilder:
+                            (context, animation, secondaryAnimation, child) {
+                          return SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(1, 0),
+                              end: Offset.zero,
+                            ).animate(
+                              CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOutCubic,
+                              ),
+                            ),
+                            child: child,
+                          );
+                        },
+                      ),
+                    );
                   }
                 }
               },
@@ -188,8 +197,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           if (!_hasUsagePermission) _buildUsagePermissionBanner(),
                           _buildTopInfoBar(),
     
-                          // Live Precision Clock removed
-                          if (!_showIntentionSetter) _buildIntentionHeader(),
+                          if (!_showIntentionSetter) ...[
+                            _buildRisingTideMaster(),
+                            const SizedBox(height: 12),
+                            _buildIntentionHeader(),
+                          ],
     
                           const Spacer(),
     
@@ -209,11 +221,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   size: 28,
                                 ),
                                 Text(
-                                  "Swipe up or tap to search",
+                                  "Swipe up · search  ·  left for Tide pool  ·  right for usage",
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.6),
-                                    fontSize: 12,
+                                    color: Colors.white.withValues(alpha: 0.5),
+                                    fontSize: 11,
                                     fontWeight: FontWeight.w500,
+                                    height: 1.35,
                                   ),
                                 ),
                                 // const SizedBox(height: 24), // Tighter gap for better grounded layout
@@ -235,7 +249,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 onDismiss: () {
                   setState(() {
                     _showIntentionSetter = false;
-                    _hasSkippedIntentionTodaySession = true;
                   });
                 },
                 onIntentionSet: () {
@@ -268,6 +281,71 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  Widget _buildRisingTideMaster() {
+    final on = StorageService.isRisingTideMasterEnabled();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              const Color(0xFF0E7490).withValues(alpha: 0.35),
+              const Color(0xFF1E3A5F).withValues(alpha: 0.5),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: on ? Colors.cyan.withValues(alpha: 0.55) : Colors.white24,
+            width: on ? 1.5 : 1,
+          ),
+          boxShadow: on
+              ? [
+                  BoxShadow(
+                    color: Colors.cyan.withValues(alpha: 0.12),
+                    blurRadius: 20,
+                    spreadRadius: 0,
+                  ),
+                ]
+              : null,
+        ),
+        child: SwitchListTile(
+          value: on,
+          secondary: Icon(
+            Icons.waves,
+            color: on ? Colors.cyanAccent : Colors.white38,
+            size: 30,
+          ),
+          title: const Text(
+            'Rising Tide',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+              fontSize: 17,
+            ),
+          ),
+          subtitle: Text(
+            on
+                ? 'On — asks on flagged apps before they open'
+                : 'Off — no gates (same as Tide pool switch)',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.58),
+              fontSize: 12.5,
+              height: 1.3,
+            ),
+          ),
+          activeThumbColor: Colors.cyanAccent,
+          activeTrackColor: Colors.cyan.withValues(alpha: 0.45),
+          inactiveThumbColor: Colors.white54,
+          inactiveTrackColor: Colors.white12,
+          onChanged: (v) async {
+            await StorageService.setRisingTideMasterEnabled(v);
+            if (mounted) setState(() {});
+          },
+        ),
+      ),
+    );
+  }
+
   Widget _buildIntentionHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
@@ -282,7 +360,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              "TODAY'S INTENTION",
+              "TODAY (OPTIONAL)",
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.7),
                 letterSpacing: 2,
@@ -293,7 +371,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             const SizedBox(height: 8),
             Text(
-              _intention ?? "Tap to set intention...",
+              _intention ?? "Tap to add an intention",
               style: Theme.of(context).textTheme.displayLarge?.copyWith(
                 fontSize: _intention != null ? 36 : 24,
                 height: 1.2,

@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">Kora Launcher uses accessibility access to help you stay mindful by intercepting distracting apps when you open them via notifications or recent apps.</string>
+</resources>

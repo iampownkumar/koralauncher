@@ -48,6 +48,13 @@ class UsageService {
     return Duration.zero;
   }
 
+  /// Rounded minutes today for [packageName] (matches Digital Wellbeing–style rounding).
+  /// Use this for UI and Rising Tide so stats match [getStage].
+  static int getRoundedMinutesToday(String packageName) {
+    if (!shouldCountPackage(packageName)) return 0;
+    return _roundedMinutes(getAppUsage(packageName));
+  }
+
   static int _roundedMinutes(Duration duration) {
     // Round half-up to match typical "screen time" rounding in dashboards.
     // Digital Wellbeing usually rounds to the nearest minute (not floor).

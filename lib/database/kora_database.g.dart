@@ -1998,6 +1998,410 @@ class IntentionsCompanion extends UpdateCompanion<Intention> {
   }
 }
 
+class $TideEventsTable extends TideEvents
+    with TableInfo<$TideEventsTable, TideEvent> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TideEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<DateTime> timestamp = GeneratedColumn<DateTime>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _packageNameMeta = const VerificationMeta(
+    'packageName',
+  );
+  @override
+  late final GeneratedColumn<String> packageName = GeneratedColumn<String>(
+    'package_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _eventTypeMeta = const VerificationMeta(
+    'eventType',
+  );
+  @override
+  late final GeneratedColumn<String> eventType = GeneratedColumn<String>(
+    'event_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _detailMeta = const VerificationMeta('detail');
+  @override
+  late final GeneratedColumn<String> detail = GeneratedColumn<String>(
+    'detail',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _stageMeta = const VerificationMeta('stage');
+  @override
+  late final GeneratedColumn<int> stage = GeneratedColumn<int>(
+    'stage',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    timestamp,
+    packageName,
+    eventType,
+    detail,
+    stage,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'tide_events';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TideEvent> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_timestampMeta);
+    }
+    if (data.containsKey('package_name')) {
+      context.handle(
+        _packageNameMeta,
+        packageName.isAcceptableOrUnknown(
+          data['package_name']!,
+          _packageNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('event_type')) {
+      context.handle(
+        _eventTypeMeta,
+        eventType.isAcceptableOrUnknown(data['event_type']!, _eventTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventTypeMeta);
+    }
+    if (data.containsKey('detail')) {
+      context.handle(
+        _detailMeta,
+        detail.isAcceptableOrUnknown(data['detail']!, _detailMeta),
+      );
+    }
+    if (data.containsKey('stage')) {
+      context.handle(
+        _stageMeta,
+        stage.isAcceptableOrUnknown(data['stage']!, _stageMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  TideEvent map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TideEvent(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}timestamp'],
+      )!,
+      packageName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}package_name'],
+      ),
+      eventType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event_type'],
+      )!,
+      detail: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}detail'],
+      ),
+      stage: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}stage'],
+      ),
+    );
+  }
+
+  @override
+  $TideEventsTable createAlias(String alias) {
+    return $TideEventsTable(attachedDatabase, alias);
+  }
+}
+
+class TideEvent extends DataClass implements Insertable<TideEvent> {
+  final int id;
+  final DateTime timestamp;
+  final String? packageName;
+  final String eventType;
+  final String? detail;
+  final int? stage;
+  const TideEvent({
+    required this.id,
+    required this.timestamp,
+    this.packageName,
+    required this.eventType,
+    this.detail,
+    this.stage,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['timestamp'] = Variable<DateTime>(timestamp);
+    if (!nullToAbsent || packageName != null) {
+      map['package_name'] = Variable<String>(packageName);
+    }
+    map['event_type'] = Variable<String>(eventType);
+    if (!nullToAbsent || detail != null) {
+      map['detail'] = Variable<String>(detail);
+    }
+    if (!nullToAbsent || stage != null) {
+      map['stage'] = Variable<int>(stage);
+    }
+    return map;
+  }
+
+  TideEventsCompanion toCompanion(bool nullToAbsent) {
+    return TideEventsCompanion(
+      id: Value(id),
+      timestamp: Value(timestamp),
+      packageName: packageName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(packageName),
+      eventType: Value(eventType),
+      detail: detail == null && nullToAbsent
+          ? const Value.absent()
+          : Value(detail),
+      stage: stage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(stage),
+    );
+  }
+
+  factory TideEvent.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TideEvent(
+      id: serializer.fromJson<int>(json['id']),
+      timestamp: serializer.fromJson<DateTime>(json['timestamp']),
+      packageName: serializer.fromJson<String?>(json['packageName']),
+      eventType: serializer.fromJson<String>(json['eventType']),
+      detail: serializer.fromJson<String?>(json['detail']),
+      stage: serializer.fromJson<int?>(json['stage']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'timestamp': serializer.toJson<DateTime>(timestamp),
+      'packageName': serializer.toJson<String?>(packageName),
+      'eventType': serializer.toJson<String>(eventType),
+      'detail': serializer.toJson<String?>(detail),
+      'stage': serializer.toJson<int?>(stage),
+    };
+  }
+
+  TideEvent copyWith({
+    int? id,
+    DateTime? timestamp,
+    Value<String?> packageName = const Value.absent(),
+    String? eventType,
+    Value<String?> detail = const Value.absent(),
+    Value<int?> stage = const Value.absent(),
+  }) => TideEvent(
+    id: id ?? this.id,
+    timestamp: timestamp ?? this.timestamp,
+    packageName: packageName.present ? packageName.value : this.packageName,
+    eventType: eventType ?? this.eventType,
+    detail: detail.present ? detail.value : this.detail,
+    stage: stage.present ? stage.value : this.stage,
+  );
+  TideEvent copyWithCompanion(TideEventsCompanion data) {
+    return TideEvent(
+      id: data.id.present ? data.id.value : this.id,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+      packageName: data.packageName.present
+          ? data.packageName.value
+          : this.packageName,
+      eventType: data.eventType.present ? data.eventType.value : this.eventType,
+      detail: data.detail.present ? data.detail.value : this.detail,
+      stage: data.stage.present ? data.stage.value : this.stage,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TideEvent(')
+          ..write('id: $id, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('packageName: $packageName, ')
+          ..write('eventType: $eventType, ')
+          ..write('detail: $detail, ')
+          ..write('stage: $stage')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, timestamp, packageName, eventType, detail, stage);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TideEvent &&
+          other.id == this.id &&
+          other.timestamp == this.timestamp &&
+          other.packageName == this.packageName &&
+          other.eventType == this.eventType &&
+          other.detail == this.detail &&
+          other.stage == this.stage);
+}
+
+class TideEventsCompanion extends UpdateCompanion<TideEvent> {
+  final Value<int> id;
+  final Value<DateTime> timestamp;
+  final Value<String?> packageName;
+  final Value<String> eventType;
+  final Value<String?> detail;
+  final Value<int?> stage;
+  const TideEventsCompanion({
+    this.id = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.packageName = const Value.absent(),
+    this.eventType = const Value.absent(),
+    this.detail = const Value.absent(),
+    this.stage = const Value.absent(),
+  });
+  TideEventsCompanion.insert({
+    this.id = const Value.absent(),
+    required DateTime timestamp,
+    this.packageName = const Value.absent(),
+    required String eventType,
+    this.detail = const Value.absent(),
+    this.stage = const Value.absent(),
+  }) : timestamp = Value(timestamp),
+       eventType = Value(eventType);
+  static Insertable<TideEvent> custom({
+    Expression<int>? id,
+    Expression<DateTime>? timestamp,
+    Expression<String>? packageName,
+    Expression<String>? eventType,
+    Expression<String>? detail,
+    Expression<int>? stage,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (packageName != null) 'package_name': packageName,
+      if (eventType != null) 'event_type': eventType,
+      if (detail != null) 'detail': detail,
+      if (stage != null) 'stage': stage,
+    });
+  }
+
+  TideEventsCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? timestamp,
+    Value<String?>? packageName,
+    Value<String>? eventType,
+    Value<String?>? detail,
+    Value<int?>? stage,
+  }) {
+    return TideEventsCompanion(
+      id: id ?? this.id,
+      timestamp: timestamp ?? this.timestamp,
+      packageName: packageName ?? this.packageName,
+      eventType: eventType ?? this.eventType,
+      detail: detail ?? this.detail,
+      stage: stage ?? this.stage,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<DateTime>(timestamp.value);
+    }
+    if (packageName.present) {
+      map['package_name'] = Variable<String>(packageName.value);
+    }
+    if (eventType.present) {
+      map['event_type'] = Variable<String>(eventType.value);
+    }
+    if (detail.present) {
+      map['detail'] = Variable<String>(detail.value);
+    }
+    if (stage.present) {
+      map['stage'] = Variable<int>(stage.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TideEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('packageName: $packageName, ')
+          ..write('eventType: $eventType, ')
+          ..write('detail: $detail, ')
+          ..write('stage: $stage')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$KoraDatabase extends GeneratedDatabase {
   _$KoraDatabase(QueryExecutor e) : super(e);
   $KoraDatabaseManager get managers => $KoraDatabaseManager(this);
@@ -2005,6 +2409,7 @@ abstract class _$KoraDatabase extends GeneratedDatabase {
   late final $MoodsTable moods = $MoodsTable(this);
   late final $DecisionsTable decisions = $DecisionsTable(this);
   late final $IntentionsTable intentions = $IntentionsTable(this);
+  late final $TideEventsTable tideEvents = $TideEventsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2014,6 +2419,7 @@ abstract class _$KoraDatabase extends GeneratedDatabase {
     moods,
     decisions,
     intentions,
+    tideEvents,
   ];
 }
 
@@ -2987,6 +3393,218 @@ typedef $$IntentionsTableProcessedTableManager =
       Intention,
       PrefetchHooks Function()
     >;
+typedef $$TideEventsTableCreateCompanionBuilder =
+    TideEventsCompanion Function({
+      Value<int> id,
+      required DateTime timestamp,
+      Value<String?> packageName,
+      required String eventType,
+      Value<String?> detail,
+      Value<int?> stage,
+    });
+typedef $$TideEventsTableUpdateCompanionBuilder =
+    TideEventsCompanion Function({
+      Value<int> id,
+      Value<DateTime> timestamp,
+      Value<String?> packageName,
+      Value<String> eventType,
+      Value<String?> detail,
+      Value<int?> stage,
+    });
+
+class $$TideEventsTableFilterComposer
+    extends Composer<_$KoraDatabase, $TideEventsTable> {
+  $$TideEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get eventType => $composableBuilder(
+    column: $table.eventType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get detail => $composableBuilder(
+    column: $table.detail,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get stage => $composableBuilder(
+    column: $table.stage,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$TideEventsTableOrderingComposer
+    extends Composer<_$KoraDatabase, $TideEventsTable> {
+  $$TideEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get eventType => $composableBuilder(
+    column: $table.eventType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get detail => $composableBuilder(
+    column: $table.detail,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get stage => $composableBuilder(
+    column: $table.stage,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$TideEventsTableAnnotationComposer
+    extends Composer<_$KoraDatabase, $TideEventsTable> {
+  $$TideEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<String> get packageName => $composableBuilder(
+    column: $table.packageName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get eventType =>
+      $composableBuilder(column: $table.eventType, builder: (column) => column);
+
+  GeneratedColumn<String> get detail =>
+      $composableBuilder(column: $table.detail, builder: (column) => column);
+
+  GeneratedColumn<int> get stage =>
+      $composableBuilder(column: $table.stage, builder: (column) => column);
+}
+
+class $$TideEventsTableTableManager
+    extends
+        RootTableManager<
+          _$KoraDatabase,
+          $TideEventsTable,
+          TideEvent,
+          $$TideEventsTableFilterComposer,
+          $$TideEventsTableOrderingComposer,
+          $$TideEventsTableAnnotationComposer,
+          $$TideEventsTableCreateCompanionBuilder,
+          $$TideEventsTableUpdateCompanionBuilder,
+          (
+            TideEvent,
+            BaseReferences<_$KoraDatabase, $TideEventsTable, TideEvent>,
+          ),
+          TideEvent,
+          PrefetchHooks Function()
+        > {
+  $$TideEventsTableTableManager(_$KoraDatabase db, $TideEventsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TideEventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TideEventsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TideEventsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+                Value<String?> packageName = const Value.absent(),
+                Value<String> eventType = const Value.absent(),
+                Value<String?> detail = const Value.absent(),
+                Value<int?> stage = const Value.absent(),
+              }) => TideEventsCompanion(
+                id: id,
+                timestamp: timestamp,
+                packageName: packageName,
+                eventType: eventType,
+                detail: detail,
+                stage: stage,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required DateTime timestamp,
+                Value<String?> packageName = const Value.absent(),
+                required String eventType,
+                Value<String?> detail = const Value.absent(),
+                Value<int?> stage = const Value.absent(),
+              }) => TideEventsCompanion.insert(
+                id: id,
+                timestamp: timestamp,
+                packageName: packageName,
+                eventType: eventType,
+                detail: detail,
+                stage: stage,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$TideEventsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$KoraDatabase,
+      $TideEventsTable,
+      TideEvent,
+      $$TideEventsTableFilterComposer,
+      $$TideEventsTableOrderingComposer,
+      $$TideEventsTableAnnotationComposer,
+      $$TideEventsTableCreateCompanionBuilder,
+      $$TideEventsTableUpdateCompanionBuilder,
+      (TideEvent, BaseReferences<_$KoraDatabase, $TideEventsTable, TideEvent>),
+      TideEvent,
+      PrefetchHooks Function()
+    >;
 
 class $KoraDatabaseManager {
   final _$KoraDatabase _db;
@@ -2999,4 +3617,6 @@ class $KoraDatabaseManager {
       $$DecisionsTableTableManager(_db, _db.decisions);
   $$IntentionsTableTableManager get intentions =>
       $$IntentionsTableTableManager(_db, _db.intentions);
+  $$TideEventsTableTableManager get tideEvents =>
+      $$TideEventsTableTableManager(_db, _db.tideEvents);
 }

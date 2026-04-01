@@ -5,6 +5,8 @@ class AppListItem extends StatelessWidget {
   final AppInfo app;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+  /// Quick Rising Tide toggle — tap the wave icon (optional).
+  final VoidCallback? onFlagTap;
   final bool isFlagged;
   final Duration usage;
 
@@ -13,6 +15,7 @@ class AppListItem extends StatelessWidget {
     required this.app,
     required this.onTap,
     required this.onLongPress,
+    this.onFlagTap,
     this.isFlagged = false,
     this.usage = Duration.zero,
   });
@@ -71,6 +74,21 @@ class AppListItem extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+              if (onFlagTap != null) ...[
+                IconButton(
+                  tooltip: isFlagged ? 'Rising Tide on — tap to turn off' : 'Mark for Rising Tide',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                  icon: Icon(
+                    Icons.waves,
+                    size: 24,
+                    color: isFlagged
+                        ? Theme.of(context).primaryColor
+                        : Colors.white38,
+                  ),
+                  onPressed: onFlagTap,
+                ),
+              ],
               if (usage != Duration.zero) ...[
                 const SizedBox(width: 8),
                 Container(
@@ -91,7 +109,7 @@ class AppListItem extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
               ],
-              if (isFlagged)
+              if (isFlagged && onFlagTap == null)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(

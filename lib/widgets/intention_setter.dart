@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
+import '../services/rising_tide_service.dart';
 import '../database/database_provider.dart';
 
 class IntentionSetter extends StatefulWidget {
@@ -32,7 +33,8 @@ class _IntentionSetterState extends State<IntentionSetter> {
   void _submit() async {
     if (_controller.text.trim().isNotEmpty) {
       await StorageService.setDailyIntention(_controller.text.trim());
-      await db.saveIntention(_controller.text.trim()); 
+      await db.saveIntention(_controller.text.trim());
+      RisingTideService.invalidateIntentionCache();
       widget.onIntentionSet();
     }
   }

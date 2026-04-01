@@ -1,0 +1,34 @@
+bug fixes and improvements
+
+1. after reboot our koralaucher is asking set default but it was already set as default launcher
+2 when new app installed the app drawer is not updating the app making the user freshtrated
+3  when open the app drawer for searching and once the app opened and 
+    when i try to close the keyboard is some what overlayign  and came back  and it is hiding the search bar
+4. when the flag app need to set the custom time limit for the user like how much 
+    time want to use the app and then after that our rising tide system take over and initialize 
+
+5 many users are requsting the walpaper seting optionn because they need it so need to implement that 
+6 tell me what database we are using to store the user daily usage data 
+7 in the early morning when the user wake up show the intention screen and ask to user to enter their goal 
+    and refator the word intention to goal 
+8 and i want to implement the todo list app and desin the idea of it . 
+9 user needs time and date on the home screen 
+10 and i want to implement the notification system and desin the idea of it . 
+    and remaind the user about their goal and todo list  3 times a day 
+11 when i instaled the app freshly it is taking too  long to loading and we need to fix it 
+    because user don't have a patience to wait . if we are runing anybacround services then 
+    we need to find the way to implemet and the app need to open the laucher like a very fast and in a instant
+12 when i set the koralaucher as a default laucher it is taking time to load . find the way to fix it 
+13 and the color of the rising tide wave system when i turned on it is not looking good 
+    both in the app drawer and rising tide poll system and also in the rising tide page add option to 
+    user can easily search the app and mark it .
+14 implemet the default social media apps as a distraction give them max of 15 minites time 
+    and by default set the these social media app timing but but for whatsapp set it 1 hour 
+15 and rememer we never force . kora is not a jail . it is a program that make the user make the congnitive dicition
+    and force will never work. so we make the user the choise but we make it easily and engagment 
+    if not our app will not survive in the market.
+16 and also add setting option to change the default laucher of the system that will open the screen you 
+    design the where to put it.  
+17 weired bug user reported: when some one call user and answer the call and in the notification if 
+    the user touch it, it directly open the app. eventhoug user screen is locked 
+18 make our app instat fast feeling that user can't feel it is slow 

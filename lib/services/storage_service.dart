@@ -1,7 +1,12 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'rising_tide_service.dart';
 
 class StorageService {
   static const String _flaggedAppsKey = 'flagged_apps';
+  static const String _risingTideMasterKey = 'rising_tide_master_enabled';
+  static const int _defaultDailyLimitMinutes = 10;
+  static const String _appLimitPrefix = 'rt_limit_minutes_';
+  static const String _todayOpensPrefix = 'rt_opens_';
   static late SharedPreferences _prefs;
 
   static Future<void> init() async {
@@ -29,10 +34,50 @@ class StorageService {
       apps.add(packageName);
     }
     await _prefs.setStringList(_flaggedAppsKey, apps);
+    
+    // Sync state to native Accessibility service
+    await RisingTideService.syncInterceptionState();
   }
 
   static bool isAppFlagged(String packageName) {
     return getFlaggedApps().contains(packageName);
+  }
+
+  /// Master switch: when false, Rising Tide gates are off for every app.
+  static bool isRisingTideMasterEnabled() {
+    return _prefs.getBool(_risingTideMasterKey) ?? true;
+  }
+
+  static Future<void> setRisingTideMasterEnabled(bool enabled) async {
+    await _prefs.setBool(_risingTideMasterKey, enabled);
+    await RisingTideService.syncInterceptionState();
+  }
+
+  // --- Per-app daily time limit (Rising Tide) ---
+
+  static int getAppDailyLimitMinutes(String packageName) {
+    return _prefs.getInt('$_appLimitPrefix$packageName') ?? _defaultDailyLimitMinutes;
+  }
+
+  static Future<void> setAppDailyLimitMinutes(String packageName, int minutes) async {
+    final m = minutes.clamp(1, 24 * 60);
+    await _prefs.setInt('$_appLimitPrefix$packageName', m);
+  }
+
+  // --- Opens today (gate visits + whisper launches) ---
+
+  static String _todayOpensKey(String packageName) {
+    return '$_todayOpensPrefix${_localDayKey(DateTime.now())}_$packageName';
+  }
+
+  static int getTodayOpenCount(String packageName) {
+    return _prefs.getInt(_todayOpensKey(packageName)) ?? 0;
+  }
+
+  static Future<void> incrementTodayOpenCount(String packageName) async {
+    final key = _todayOpensKey(packageName);
+    final next = (_prefs.getInt(key) ?? 0) + 1;
+    await _prefs.setInt(key, next);
   }
 
   static String? getDailyIntention() {
@@ -57,5 +102,37 @@ class StorageService {
     await _prefs.setBool('minimal_mode', value);
   }
 
+  static String? getString(String key) => _prefs.getString(key);
+  
+  static Future<void> setString(String key, String value) async {
+    await _prefs.setString(key, value);
+  }
+
+  static Future<void> remove(String key) async {
+    await _prefs.remove(key);
+  }
+
+  // --- Task Mock Methods ---
+  static List<String> getTodayTasks() {
+    // Simulated tasks for now. Later can be tied to a database or intentional to-do list.
+    final tasks = _prefs.getStringList('mock_tasks');
+    if (tasks == null) {
+      final defaultTasks = [
+        "Drink a glass of water",
+        "Take 5 deep breaths",
+        "Stretch for 2 minutes",
+        "Jot down 1 thing you are grateful for"
+      ];
+      _prefs.setStringList('mock_tasks', defaultTasks);
+      return defaultTasks;
+    }
+    return tasks;
+  }
+
+  static Future<void> completeTask(String task) async {
+    final tasks = getTodayTasks();
+    tasks.remove(task);
+    await _prefs.setStringList('mock_tasks', tasks);
+  }
 }
 

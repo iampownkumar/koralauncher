@@ -69,9 +69,23 @@ class Intentions extends Table {
 }
 
 // ─────────────────────────────────────────────
+// TABLE 5: TIDE EVENTS
+// Granular audit log for every Rising Tide event.
+// Powers: 30-day insights, pattern detection
+// ─────────────────────────────────────────────
+class TideEvents extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  DateTimeColumn get timestamp => dateTime()();
+  TextColumn get packageName => text().nullable()();
+  TextColumn get eventType => text()(); // 'intention_set', 'app_open_stage1', etc.
+  TextColumn get detail => text().nullable()(); // 'mood:bored', 'decision:continue'
+  IntColumn get stage => integer().nullable()(); // 0-4
+}
+
+// ─────────────────────────────────────────────
 // DATABASE CLASS
 // ─────────────────────────────────────────────
-@DriftDatabase(tables: [Sessions, Moods, Decisions, Intentions])
+@DriftDatabase(tables: [Sessions, Moods, Decisions, Intentions, TideEvents])
 class KoraDatabase extends _$KoraDatabase {
   KoraDatabase() : super(_openConnection());
 
@@ -116,6 +130,23 @@ class KoraDatabase extends _$KoraDatabase {
               s.startedAt.isBiggerOrEqualValue(start)))
         .get();
     return result.length;
+  }
+
+  Future<int> getTodayTotalMinutes(String packageName) async {
+    final today = DateTime.now();
+    final start = DateTime(today.year, today.month, today.day);
+    final result = await (select(sessions)
+          ..where((s) =>
+              s.packageName.equals(packageName) &
+              s.startedAt.isBiggerOrEqualValue(start) &
+              s.durationSeconds.isNotNull()))
+        .get();
+    
+    int totalSeconds = 0;
+    for (var s in result) {
+      totalSeconds += s.durationSeconds ?? 0;
+    }
+    return (totalSeconds / 60).round();
   }
 
   Future<List<Session>> getSessionsForAIContext(String packageName, {int days = 30}) {
@@ -185,6 +216,27 @@ class KoraDatabase extends _$KoraDatabase {
       intentionText: text,
     ));
   }
+  // ── TIDE EVENT QUERIES ───────────────────
+
+  Future<int> logTideEvent({
+    String? packageName,
+    required String eventType,
+    String? detail,
+    int? stage,
+  }) =>
+      into(tideEvents).insert(TideEventsCompanion.insert(
+        timestamp: DateTime.now(),
+        packageName: Value(packageName),
+        eventType: eventType,
+        detail: Value(detail),
+        stage: Value(stage),
+      ));
+
+  Future<List<TideEvent>> getRecentTideEvents({int limit = 100}) =>
+      (select(tideEvents)
+            ..orderBy([(t) => OrderingTerm.desc(t.timestamp)])
+            ..limit(limit))
+          .get();
 
   Future<Intention?> getTodayIntention() async {
     final today = DateTime.now();

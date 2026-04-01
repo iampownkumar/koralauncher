@@ -15,7 +15,10 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity: FlutterActivity() {
-    private val CHANNEL = "com.koralauncher.app/native"
+    companion object {
+        const val CHANNEL = "com.koralauncher.app/native"
+        var methodChannel: MethodChannel? = null
+    }
 
     override fun getTransparencyMode(): TransparencyMode {
         return TransparencyMode.transparent
@@ -27,8 +30,17 @@ class MainActivity: FlutterActivity() {
         // Removed expensive wallpaper setting that was causing cold-start lag.
         // The background is already handled by the Flutter UI and LaunchTheme.
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+        // The background is already handled by the Flutter UI and LaunchTheme.
+
+        methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        methodChannel?.setMethodCallHandler { call, result ->
+
             when (call.method) {
+                "sendBlockedApps" -> {
+                    val packages = call.argument<List<String>>("packages") ?: listOf()
+                    AccessibilityWatcherService.updateBlockedApps(packages)
+                    result.success(null)
+                }
                 "isDefaultLauncher" -> {
                     result.success(isDefaultLauncher())
                 }

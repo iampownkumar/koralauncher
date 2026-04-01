@@ -5,6 +5,7 @@ import '../services/usage_service.dart';
 import '../widgets/app_list_item.dart';
 import '../services/storage_service.dart';
 import '../services/native_service.dart';
+import '../widgets/app_long_press_menu.dart';
 import 'interception_screen.dart';
 
 class UsageDashboardScreen extends StatefulWidget {
@@ -122,11 +123,20 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
                                 app: app,
                                 usage: usage,
                                 isFlagged: isFlagged,
-                                onLongPress: () async {
+                                onFlagTap: () async {
                                   await StorageService.toggleFlaggedApp(
                                     app.packageName,
                                   );
                                   if (mounted) setState(() {});
+                                },
+                                onLongPress: () {
+                                  showAppLongPressMenu(
+                                    context,
+                                    app,
+                                    onChanged: () {
+                                      if (mounted) setState(() {});
+                                    },
+                                  );
                                 },
                                 onTap: () {
                                   if (isFlagged) {

@@ -49,6 +49,7 @@ class _LiveClockWidgetState extends State<LiveClockWidget> {
     return "$h:$m:$s:$ms $tz";
   }
 
+  @override
   Widget build(BuildContext context) {
     return Text(
       _formatTime(),

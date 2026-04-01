@@ -5,6 +5,7 @@ import '../services/storage_service.dart';
 import '../services/usage_service.dart';
 import '../services/native_service.dart';
 import '../widgets/app_list_item.dart';
+import '../widgets/app_long_press_menu.dart';
 import 'interception_screen.dart';
 import 'dart:ui';
 
@@ -204,6 +205,10 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
           app: app,
           isFlagged: isFlagged,
           usage: usage,
+          onFlagTap: () async {
+            await StorageService.toggleFlaggedApp(app.packageName);
+            if (mounted) setState(() {});
+          },
           onTap: () {
             if (isFlagged) {
               Navigator.push(
@@ -225,22 +230,13 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
               });
             }
           },
-          onLongPress: () async {
-            await StorageService.toggleFlaggedApp(app.packageName);
-            if (mounted) setState(() {});
-            final msg = StorageService.isAppFlagged(app.packageName)
-                ? '${app.name} is now flagged.'
-                : '${app.name} is no longer flagged.';
-            ScaffoldMessenger.of(context).clearSnackBars();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(msg),
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                duration: const Duration(seconds: 2),
-              ),
+          onLongPress: () {
+            showAppLongPressMenu(
+              context,
+              app,
+              onChanged: () {
+                if (mounted) setState(() {});
+              },
             );
           },
         );
