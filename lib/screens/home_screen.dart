@@ -26,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool _showGoalSetter = false;
   bool _isDefaultLauncher = true;
   bool _hasUsagePermission = true;
+  bool _pulseIntention = false;
   String? _goal;
 
   @override
@@ -96,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (now.hour >= 5 && now.hour < 10) {
       if (_goal == null || _goal!.isEmpty) {
         setState(() {
-          _showGoalSetter = true;
+          _pulseIntention = true;
         });
       }
     }
@@ -324,23 +325,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          _buildSetGoalPill(),
+          const SizedBox(width: 12),
           Expanded(
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: _buildGoalChip(),
-            ),
+            child: _buildCenterIntentionText(),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           if (_hasUsagePermission) _buildUsageStats(),
         ],
       ),
     );
   }
 
-  Widget _buildGoalChip() {
+  Widget _buildSetGoalPill() {
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -348,32 +347,73 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.3),
+          color: Colors.white.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.flag, size: 16, color: Colors.white),
+            const Icon(Icons.flag, size: 14, color: Colors.white),
             const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                _goal != null && _goal!.isNotEmpty ? _goal! : "Set Goal",
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                ),
+            const Text(
+              "Set Goal",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildCenterIntentionText() {
+    final hasGoal = _goal != null && _goal!.isNotEmpty;
+    
+    Widget textWidget = Text(
+      hasGoal ? _goal! : "No intention set",
+      textAlign: TextAlign.center,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        color: hasGoal ? Colors.white : Colors.white.withValues(alpha: 0.4),
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
+    );
+
+    if (_pulseIntention && !hasGoal) {
+      // Soft single pulse on morning unlock if no goal
+      textWidget = TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.3, end: 1.0),
+        duration: const Duration(milliseconds: 2000),
+        curve: Curves.easeInOutSine,
+        builder: (context, val, child) {
+          return Opacity(opacity: val, child: child);
+        },
+        onEnd: () {
+          if (mounted) {
+            setState(() {
+              _pulseIntention = false;
+            });
+          }
+        },
+        child: textWidget,
+      );
+    }
+    
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _pulseIntention = false;
+          _showGoalSetter = true;
+        });
+      },
+      child: textWidget,
     );
   }
 
