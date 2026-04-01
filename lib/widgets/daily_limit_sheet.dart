@@ -54,7 +54,16 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
       if (!ok || !mounted) return;
     }
     await StorageService.setAppDailyLimitMinutes(widget.packageName, m);
-    await RisingTideService.syncInterceptionState();
+    // Auto-enable the master toggle and flag the app so the user doesn't have
+    // to manually configure Rising Tide in the Tide Pool screen.
+    if (!StorageService.isRisingTideMasterEnabled()) {
+      await StorageService.setRisingTideMasterEnabled(true);
+    }
+    if (!StorageService.isAppFlagged(widget.packageName)) {
+      await StorageService.toggleFlaggedApp(widget.packageName);
+    } else {
+      await RisingTideService.syncInterceptionState();
+    }
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -188,7 +197,7 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Rising Tide uses 50% / 100% / 200% of this limit for stages.',
+                  'When you reach this limit, Kora will show one gentle reminder.',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.white.withValues(alpha: 0.35),

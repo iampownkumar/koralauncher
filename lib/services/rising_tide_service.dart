@@ -2,7 +2,6 @@ import '../models/rising_tide_stage.dart';
 import 'usage_service.dart';
 import 'storage_service.dart';
 import 'native_service.dart';
-import 'app_lock_manager.dart';
 import 'rising_tide_logger.dart';
 
 class RisingTideService {
@@ -12,11 +11,6 @@ class RisingTideService {
   /// Calculates the current Rising Tide stage for a given package.
   static RisingTideStage getStage(String packageName) {
     if (!StorageService.isRisingTideMasterEnabled()) {
-      return RisingTideStage.whisper;
-    }
-
-    // Check if the user has an active 5-minute task unlock
-    if (AppLockManager.hasActiveUnlock(packageName)) {
       return RisingTideStage.whisper;
     }
 
@@ -30,19 +24,31 @@ class RisingTideService {
     if (limitMin <= 0) {
       return RisingTideStage.whisper;
     }
-    final usagePercent = usageMinutes / limitMin;
 
-    // Reopen lock keeps the gate active for 5 minutes after a Continue
-    if (isPackageLocked(packageName)) {
-      return RisingTideStage.dim;
-    }
-
-    // Dim gate triggers at 50% of the daily limit
-    if (usagePercent >= 0.5) {
+    // Only show the gate when the user has used their FULL daily limit (100%).
+    // One gentle reminder per day — after they've acknowledged it, let them continue.
+    if (usageMinutes >= limitMin) {
+      // If already shown today, let them open freely (conscious decision made).
+      if (_hasShownLimitWarningToday(packageName)) {
+        return RisingTideStage.whisper;
+      }
       return RisingTideStage.dim;
     }
 
     return RisingTideStage.whisper;
+  }
+
+  static String _limitWarningKey(String packageName) {
+    final today = _localDayKey(DateTime.now());
+    return 'rt_limit_shown_${today}_$packageName';
+  }
+
+  static bool _hasShownLimitWarningToday(String packageName) {
+    return StorageService.getString(_limitWarningKey(packageName)) == 'true';
+  }
+
+  static Future<void> markLimitWarningShown(String packageName) async {
+    await StorageService.setString(_limitWarningKey(packageName), 'true');
   }
 
   /// Synchronizes the list of apps that need interception with the native Accessibility service.
