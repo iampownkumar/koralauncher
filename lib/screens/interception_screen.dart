@@ -294,23 +294,99 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   }
 
   Widget _buildMirrorContent() {
+    final limitMinutes = RisingTideService.getAppDailyLimit(widget.app.packageName).inMinutes;
+    // Top pending todo — the most powerful mirror question
+    final topTodo = TodoService.todos.firstWhere(
+      (t) => !t.isCompleted,
+      orElse: () => TodoService.todos.isEmpty ? TodoService.todos.first : TodoService.todos.first,
+    );
+    final hasPendingTodo = TodoService.hasPendingTodos();
+
     return Column(
       children: [
-        const Text(
-          "Limit Reached",
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-            color: Colors.redAccent,
-            letterSpacing: 4,
+        // Red "Limit Reached" badge
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.redAccent.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.timer_off_rounded, size: 14, color: Colors.redAccent),
+              const SizedBox(width: 6),
+              Text(
+                'LIMIT REACHED  ·  ${LimitTimeFormat.dualLabel(limitMinutes)}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.redAccent,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 24),
-        if (_dailyIntention != null) ...[
+        const SizedBox(height: 28),
+
+        // The mirror question — pulled from their actual to-do list
+        if (hasPendingTodo) ...[
           Text(
-            "\"$_dailyIntention\"",
+            'You said you\'d do this today:',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.white.withValues(alpha: 0.4),
+              letterSpacing: 0.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            ),
+            child: Text(
+              topTodo.title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                height: 1.4,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Does opening ${widget.app.name} help with that?',
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.white.withValues(alpha: 0.5),
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ] else if (_dailyIntention != null) ...[
+          // Fallback to daily intention if no todos
+          Text(
+            'Your note for today:',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.white.withValues(alpha: 0.4),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '"$_dailyIntention"',
             style: const TextStyle(
-              fontSize: 24,
+              fontSize: 22,
               fontStyle: FontStyle.italic,
               color: Colors.white,
               height: 1.4,
@@ -319,29 +395,39 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            "Does opening this help with your intention?",
+            'Does opening ${widget.app.name} align with this?',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 15,
               color: Colors.white.withValues(alpha: 0.5),
             ),
             textAlign: TextAlign.center,
           ),
         ] else ...[
-          const Text(
-            "No note for today (optional).",
-            style: TextStyle(fontSize: 18, color: Colors.white70),
-          ),
-          TextButton(
-            onPressed: _showGateSettings,
-            child: const Text(
-              "Set daily limit",
-              style: TextStyle(color: Colors.blueAccent),
+          // No todo, no intention — bare mirror
+          Text(
+            'You\'ve hit your limit for ${widget.app.name} today.',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w300,
+              color: Colors.white.withValues(alpha: 0.7),
+              height: 1.4,
             ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Think for a moment before continuing.',
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.white.withValues(alpha: 0.4),
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
-        const SizedBox(height: 32),
+
+        const SizedBox(height: 24),
         _buildStatsRow(),
-        if (_dailyIntention != null) _buildGateSettingsLink(),
+        _buildGateSettingsLink(),
       ],
     );
   }
