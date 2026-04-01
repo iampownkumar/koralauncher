@@ -223,6 +223,15 @@ class MainActivity: FlutterActivity() {
         return enabledServices?.contains(serviceName) == true
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // If the user clicks "Home" while already in the launcher, intent will be ACTION_MAIN + CATEGORY_HOME.
+        // We detect this to tell Flutter to close any open drawers or overlays.
+        if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) {
+            methodChannel?.invokeMethod("onHomePressed", null)
+        }
+    }
+
     private fun openAccessibilitySettings() {
         try {
             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)

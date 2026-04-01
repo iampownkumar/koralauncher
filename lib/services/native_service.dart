@@ -27,6 +27,12 @@ class NativeService {
         }
       } else if (call.method == 'onPackageChanged') {
         await LauncherService.refreshApps();
+      } else if (call.method == 'onHomePressed') {
+        final nav = navigatorKey.currentState;
+        if (nav != null) {
+          // Close any open drawers/screens and go back to home
+          nav.popUntil((route) => route.isFirst);
+        }
       }
     });
   }
