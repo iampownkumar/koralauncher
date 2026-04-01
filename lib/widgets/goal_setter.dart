@@ -17,11 +17,28 @@ class GoalSetter extends StatefulWidget {
 
 class _GoalSetterState extends State<GoalSetter> {
   late TextEditingController _controller;
+  bool _canSkip = false;
+  bool _isFirstRun = false;
 
   @override
   void initState() {
     super.initState();
     _controller = TextEditingController(text: widget.initialGoal);
+    _isFirstRun = !StorageService.hasCompletedOnboarding();
+    
+    if (widget.onDismiss != null) {
+      if (_isFirstRun) {
+        Future.delayed(const Duration(seconds: 5), () {
+          if (mounted) {
+            setState(() {
+              _canSkip = true;
+            });
+          }
+        });
+      } else {
+        _canSkip = true;
+      }
+    }
   }
 
   @override
@@ -32,6 +49,7 @@ class _GoalSetterState extends State<GoalSetter> {
 
   void _submit() async {
     if (_controller.text.trim().isNotEmpty) {
+      if (_isFirstRun) await StorageService.completeOnboarding();
       // Keep internal storage for fast retrieval
       await StorageService.setDailyIntention(_controller.text.trim());
       // Save to Drift DB for pattern analysis
@@ -119,13 +137,19 @@ class _GoalSetterState extends State<GoalSetter> {
                 ),
                 if (widget.onDismiss != null) ...[
                   const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: widget.onDismiss,
-                    child: Text(
-                      "Skip for now", 
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
-                    ),
-                  ),
+                  if (_canSkip)
+                    TextButton(
+                      onPressed: () async {
+                        if (_isFirstRun) await StorageService.completeOnboarding();
+                        widget.onDismiss!();
+                      },
+                      child: Text(
+                        "Skip for now", 
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
+                      ),
+                    )
+                  else
+                    const SizedBox(height: 36), // preserve same height
                 ],
               ],
             ),

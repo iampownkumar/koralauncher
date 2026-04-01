@@ -112,6 +112,15 @@ class StorageService {
     await _prefs.remove(key);
   }
 
+  // --- Onboarding ---
+  static bool hasCompletedOnboarding() {
+    return _prefs.getBool('has_completed_onboarding') ?? false;
+  }
+
+  static Future<void> completeOnboarding() async {
+    await _prefs.setBool('has_completed_onboarding', true);
+  }
+
   // --- Task Mock Methods ---
   static List<String> getTodayTasks() {
     // Simulated tasks for now. Later can be tied to a database or intentional to-do list.

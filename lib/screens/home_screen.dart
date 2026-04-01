@@ -34,7 +34,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) _checkNativeState();
+      if (mounted) _refreshHomeState();
     });
     _loadInitialData();
   }
@@ -53,43 +53,46 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (mounted && Navigator.canPop(context)) {
         Navigator.popUntil(context, (route) => route.isFirst);
       }
-      _checkNativeState();
-      UsageService.refreshUsage().then((_) {
-        if (mounted) setState(() {});
-      });
-      _checkGoal();
-      _refreshTodos();
+      _refreshHomeState();
     }
   }
 
-  Future<void> _checkNativeState() async {
+  Future<void> _refreshHomeState() async {
     final isDefault = await NativeService.isDefaultLauncher();
     final hasUsage = await NativeService.hasUsagePermission();
-    if (mounted) {
+    await UsageService.refreshUsage();
+    await TodoService.refreshTodos();
+    final newGoal = StorageService.getDailyIntention();
+    
+    if (!mounted) return;
+    
+    if (_isDefaultLauncher != isDefault || 
+        _hasUsagePermission != hasUsage || 
+        _goal != newGoal) {
       setState(() {
         _isDefaultLauncher = isDefault;
         _hasUsagePermission = hasUsage;
+        _goal = newGoal;
       });
+    } else {
+      setState(() {});
     }
   }
 
   Future<void> _loadInitialData() async {
     await LauncherService.refreshApps();
-    await UsageService.refreshUsage();
     await TodoService.init();
-    _checkGoal();
-    _checkMorningGoalTrigger();
-    if (mounted) setState(() {});
-  }
-
-  void _refreshTodos() async {
-    await TodoService.refreshTodos();
-    if (mounted) setState(() {});
-  }
-
-  void _checkGoal() {
-    _goal = StorageService.getDailyIntention();
-    if (mounted) setState(() {});
+    await _refreshHomeState();
+    
+    if (!StorageService.hasCompletedOnboarding()) {
+      if (mounted) {
+        setState(() {
+          _showGoalSetter = true;
+        });
+      }
+    } else {
+      _checkMorningGoalTrigger();
+    }
   }
 
   void _checkMorningGoalTrigger() {
@@ -124,12 +127,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         transitionDuration: const Duration(milliseconds: 300),
       ),
     ).then((_) {
-      _checkNativeState();
-      UsageService.refreshUsage().then((_) {
-        if (mounted) setState(() {});
-      });
-      _checkGoal();
-      _refreshTodos();
+      _refreshHomeState();
     });
   }
 

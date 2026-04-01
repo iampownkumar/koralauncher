@@ -12,8 +12,21 @@ class TodoService {
 
   static Future<void> refreshTodos() async {
     final list = await db.getTodos();
+    final today = DateTime.now();
+    
+    // Nightly Reset Logic: purge tasks not from today
+    for (var t in list) {
+      if (t.createdAt.year != today.year || 
+          t.createdAt.month != today.month || 
+          t.createdAt.day != today.day) {
+        await db.deleteTodo(t.id);
+      }
+    }
+    
+    // Refetch the purged list
+    final finalList = await db.getTodos();
     _todos.clear();
-    _todos.addAll(list);
+    _todos.addAll(finalList);
   }
 
   static Future<void> addTodo(String title, {int priority = 0}) async {
