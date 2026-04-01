@@ -345,14 +345,12 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
     final limitMinutes = RisingTideService.getAppDailyLimit(
       widget.app.packageName,
     ).inMinutes;
-    // Top pending todo — the most powerful mirror question
-    final topTodo = TodoService.todos.firstWhere(
-      (t) => !t.isCompleted,
-      orElse: () => TodoService.todos.isEmpty
-          ? TodoService.todos.first
-          : TodoService.todos.first,
+    // Top pending todo — use cast to null-safe version to avoid 'Bad state: No element'
+    final topTodo = TodoService.todos.cast<dynamic>().firstWhere(
+      (t) => !(t.isCompleted as bool),
+      orElse: () => null,
     );
-    final hasPendingTodo = TodoService.hasPendingTodos();
+    final hasPendingTodo = topTodo != null;
 
     return Column(
       children: [
@@ -408,7 +406,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
               border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Text(
-              topTodo.title,
+              (topTodo as dynamic).title as String,
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,

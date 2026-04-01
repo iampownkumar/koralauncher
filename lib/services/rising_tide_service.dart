@@ -127,12 +127,16 @@ class RisingTideService {
   /// Sets a flag so the gate won't fire again today for this app.
   static Future<void> markUserDecision(String packageName) async {
     final today = _localDayKey(DateTime.now());
-    await StorageService.setString('rt_dim_decided_${today}_$packageName', 'true');
+    await StorageService.setString(
+      'rt_dim_decided_${today}_$packageName',
+      'true',
+    );
   }
 
   static bool _hasUserDecidedToday(String packageName) {
     final today = _localDayKey(DateTime.now());
-    return StorageService.getString('rt_dim_decided_${today}_$packageName') == 'true';
+    return StorageService.getString('rt_dim_decided_${today}_$packageName') ==
+        'true';
   }
 
   static String _localDayKey(DateTime now) {
@@ -147,7 +151,10 @@ class RisingTideService {
   /// If the user reopens the app within this window, they are forced back to the interception screen.
   static Future<void> setReopenLock(String packageName) async {
     final expiry = DateTime.now().add(const Duration(minutes: 5));
-    await StorageService.setString(_lockKeyPrefix + packageName, expiry.toIso8601String());
+    await StorageService.setString(
+      _lockKeyPrefix + packageName,
+      expiry.toIso8601String(),
+    );
     await RisingTideLogger.logReopenLockApplied(packageName);
   }
 
@@ -193,8 +200,8 @@ class RisingTideService {
   /// Gets the cached intention or fetches it from storage.
   static String? getDailyIntention() {
     final now = DateTime.now();
-    if (_cachedIntention != null && 
-        _lastIntentionFetch != null && 
+    if (_cachedIntention != null &&
+        _lastIntentionFetch != null &&
         _lastIntentionFetch!.day == now.day) {
       return _cachedIntention;
     }
