@@ -115,9 +115,14 @@ class RisingTideService {
     final today = _localDayKey(DateTime.now());
     final key = 'rt_overrides_${today}_$packageName';
     await StorageService.setString(key, (count + 1).toString());
-    
-    // Sync state immediately to native
     await syncInterceptionState();
+  }
+
+  /// Call ONLY when the user consciously taps "Open anyway" on the Dim gate.
+  /// Sets a flag so the gate won't fire again today for this app.
+  static Future<void> markUserDecision(String packageName) async {
+    final today = _localDayKey(DateTime.now());
+    await StorageService.setString('rt_dim_decided_${today}_$packageName', 'true');
   }
 
   static String _localDayKey(DateTime now) {
