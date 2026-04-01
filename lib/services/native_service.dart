@@ -103,6 +103,15 @@ class NativeService {
     }
   }
 
+  static Future<bool> hasAccessibilityPermission() async {
+    try {
+      final bool result = await platform.invokeMethod<bool>('hasAccessibilityPermission') ?? false;
+      return result;
+    } catch (e) {
+      return false;
+    }
+  }
+
   static Future<void> openUsageSettings() async {
     try {
       await platform.invokeMethod('openUsageSettings');
@@ -114,6 +123,14 @@ class NativeService {
   static Future<void> openDefaultLauncherSettings() async {
     try {
       await platform.invokeMethod('openDefaultLauncherSettings');
+    } catch (e) {
+      print("Failed: $e");
+    }
+  }
+
+  static Future<void> openAccessibilitySettings() async {
+    try {
+      await platform.invokeMethod('openAccessibilitySettings');
     } catch (e) {
       print("Failed: $e");
     }

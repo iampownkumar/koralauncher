@@ -65,6 +65,13 @@ class MainActivity: FlutterActivity() {
                     lockScreen()
                     result.success(null)
                 }
+                "hasAccessibilityPermission" -> {
+                    result.success(hasAccessibilityPermission())
+                }
+                "openAccessibilitySettings" -> {
+                    openAccessibilitySettings()
+                    result.success(null)
+                }
                 else -> {
                     result.notImplemented()
                 }
@@ -187,6 +194,22 @@ class MainActivity: FlutterActivity() {
             intent.putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, compName)
             intent.putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Kora Launcher needs this permission to double-tap to lock the screen.")
             startActivity(intent)
+        }
+    }
+
+    private fun hasAccessibilityPermission(): Boolean {
+        val enabledServices = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        val serviceName = "$packageName/${AccessibilityWatcherService::class.java.canonicalName}"
+        return enabledServices?.contains(serviceName) == true
+    }
+
+    private fun openAccessibilitySettings() {
+        try {
+            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            startActivity(intent)
+        } catch (e: Exception) {
+            // Fallback
         }
     }
 }
