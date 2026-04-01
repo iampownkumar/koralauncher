@@ -2,7 +2,6 @@ import '../models/rising_tide_stage.dart';
 import 'usage_service.dart';
 import 'storage_service.dart';
 import 'native_service.dart';
-import 'app_lock_manager.dart';
 import 'rising_tide_logger.dart';
 
 class RisingTideService {
@@ -12,11 +11,6 @@ class RisingTideService {
   /// Calculates the current Rising Tide stage for a given package.
   static RisingTideStage getStage(String packageName) {
     if (!StorageService.isRisingTideMasterEnabled()) {
-      return RisingTideStage.whisper;
-    }
-
-    // Check if the user has an active 5-minute task unlock
-    if (AppLockManager.hasActiveUnlock(packageName)) {
       return RisingTideStage.whisper;
     }
 
@@ -34,9 +28,7 @@ class RisingTideService {
     final overrides = _getTodayOverrideCount(packageName);
 
     RisingTideStage stage;
-    if (usagePercent >= 2.0 || overrides >= 3) {
-      stage = RisingTideStage.silence;
-    } else if (usagePercent >= 1.0 || overrides >= 2) {
+    if (usagePercent >= 1.0 || overrides >= 2) {
       stage = RisingTideStage.mirror;
     } else if (usagePercent >= 0.5) {
       // Only show the Dim gate if the user hasn't consciously decided today
@@ -49,11 +41,8 @@ class RisingTideService {
       stage = RisingTideStage.whisper;
     }
 
-    // Reopen lock (readme): force the same gate again (Stage 2 or 3), not an upgrade to mirror.
+    // Reopen lock: keep the same gate active; for whisper promote to dim.
     if (isPackageLocked(packageName)) {
-      if (stage == RisingTideStage.silence) {
-        return RisingTideStage.silence;
-      }
       if (stage == RisingTideStage.whisper) {
         return RisingTideStage.dim;
       }

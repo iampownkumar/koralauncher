@@ -10,12 +10,10 @@ import '../services/usage_service.dart';
 import '../widgets/gate_settings_sheet.dart';
 import '../database/database_provider.dart';
 import '../services/storage_service.dart';
-import '../services/app_lock_manager.dart';
 import '../services/foreground_intercept_guard.dart';
 import '../services/native_service.dart';
 import '../utils/limit_time_format.dart';
 import '../services/todo_service.dart';
-import '../database/kora_database.dart';
 
 class InterceptionScreen extends StatefulWidget {
   final AppInfo app;
@@ -38,9 +36,6 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   int _countdownSeconds = 5;
   Timer? _countdownTimer;
 
-  // Tasks state
-  bool _showTasks = false;
-  List<Todo> _tasks = [];
 
   @override
   void initState() {
@@ -78,13 +73,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
         _opensToday = stats['opens'] ?? 0;
         _minutesToday = stats['minutes'] ?? 0;
         _isLoading = false;
-
-        // Stage 4 / Silence has no countdown and is always blocked
-        if (_stage == RisingTideStage.silence) {
-          _tasks = TodoService.todos.where((t) => !t.isCompleted).toList();
-        } else {
-          _startInitialCountdown();
-        }
+        _startInitialCountdown();
       });
       RisingTideLogger.logAppOpen(widget.app.packageName, _stage);
     }
@@ -212,8 +201,6 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
         return 15;
       case RisingTideStage.mirror:
         return 30;
-      case RisingTideStage.silence:
-        return 50;
     }
   }
 
@@ -225,8 +212,6 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
         return 0.4;
       case RisingTideStage.mirror:
         return 0.6;
-      case RisingTideStage.silence:
-        return 0.8;
     }
   }
 
@@ -262,8 +247,6 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
         return _buildDimContent();
       case RisingTideStage.mirror:
         return _buildMirrorContent();
-      case RisingTideStage.silence:
-        return _buildSilenceContent();
       default:
         return const SizedBox();
     }
@@ -601,155 +584,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
     );
   }
 
-  Widget _buildSilenceContent() {
-    if (_showTasks) {
-      return Column(
-        children: [
-          const Text(
-            "Complete a task to unlock 5m",
-            style: TextStyle(fontSize: 18, color: Colors.white70),
-          ),
-          const SizedBox(height: 24),
-          if (_tasks.isEmpty)
-            const Text(
-              "No tasks remaining today.",
-              style: TextStyle(color: Colors.white38),
-            )
-          else
-            ..._tasks.map(
-              (task) => Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: InkWell(
-                  onTap: () async {
-                    await TodoService.toggleTodo(task.id);
-                    await AppLockManager.grantUnlock(
-                      widget.app.packageName,
-                      minutes: 5,
-                    );
-                    await RisingTideService.syncInterceptionState();
-                    RisingTideLogger.logTideEvent(
-                      packageName: widget.app.packageName,
-                      eventType: 'stage4_task_unlock',
-                      stage: RisingTideStage.silence,
-                      detail: task.title,
-                    );
-                    await _launchApp(afterInterceptionFlow: true);
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      border: Border.all(color: Colors.white12),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.circle_outlined,
-                          color: Colors.white38,
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Text(
-                            task.title,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          const SizedBox(height: 24),
-          TextButton(
-            onPressed: () => setState(() => _showTasks = false),
-            child: const Text(
-              "Go back",
-              style: TextStyle(color: Colors.white54),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      children: [
-        const Text(
-          "Silence",
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-            color: Colors.white38,
-            letterSpacing: 8,
-          ),
-        ),
-        const SizedBox(height: 32),
-        const Text(
-          "You've chosen to stop here today.",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w300,
-            color: Colors.white70,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 24),
-        if (_dailyIntention != null) ...[
-          Text(
-            "\"$_dailyIntention\"",
-            style: const TextStyle(
-              fontSize: 18,
-              fontStyle: FontStyle.italic,
-              color: Colors.white54,
-              height: 1.4,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ] else ...[
-          const Text(
-            "No note for today",
-            style: TextStyle(
-              fontSize: 18,
-              fontStyle: FontStyle.italic,
-              color: Colors.white54,
-            ),
-          ),
-        ],
-        const SizedBox(height: 24),
-        _buildStatsRow(),
-        _buildGateSettingsLink(),
-      ],
-    );
-  }
-
   Widget _buildActionButtons() {
-    if (_stage == RisingTideStage.silence) {
-      if (_showTasks) return const SizedBox();
-      final bool usedUnlock = AppLockManager.hasUsedUnlockToday(
-        widget.app.packageName,
-      );
-      return Column(
-        children: [
-          _buildGlassButton(
-            title: "Come back tomorrow",
-            onTap: () => Navigator.pop(context),
-            isPrimary: true,
-          ),
-          if (!usedUnlock) ...[
-            const SizedBox(height: 16),
-            _buildGlassButton(
-              title: "Complete a task to unlock 5 minutes",
-              onTap: () => setState(() => _showTasks = true),
-              isPrimary: false,
-            ),
-          ],
-        ],
-      );
-    }
-
     final bool countdownActive = _countdownSeconds > 0;
 
     // DIM: 10s unskippable. "Close" exits without recording. "Open anyway"
