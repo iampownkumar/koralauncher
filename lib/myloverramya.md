@@ -739,7 +739,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   String? _selectedMood;
   int _countdownSeconds = 5;
   Timer? _countdownTimer;
-  bool _canProceed = false;
+
 
   // Tasks state
   bool _showTasks = false;
@@ -762,12 +762,10 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
     final stage = RisingTideService.getStage(widget.app.packageName);
 
     if (stage == RisingTideStage.whisper) {
-      await StorageService.incrementTodayOpenCount(widget.app.packageName);
+      // Whisper: no interception, launch directly
       await _launchApp();
       return;
     }
-
-    await StorageService.incrementTodayOpenCount(widget.app.packageName);
 
     final stats = await RisingTideService.getStats(widget.app.packageName);
     _dailyIntention = RisingTideService.getDailyIntention();
@@ -793,7 +791,6 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   void _startInitialCountdown() {
     _countdownTimer?.cancel();
     _countdownSeconds = 5;
-    _canProceed = false;
 
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
@@ -801,7 +798,6 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
           if (_countdownSeconds > 0) {
             _countdownSeconds--;
           } else {
-            _canProceed = true;
             _countdownTimer?.cancel();
           }
         });
@@ -812,19 +808,17 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   }
 
   Future<void> _launchApp({bool afterInterceptionFlow = false}) async {
-    // Log the session start in the database to increment the open count
+    // Increment open count exactly once, at the point of actual launch
+    await StorageService.incrementTodayOpenCount(widget.app.packageName);
+    // Log session in database
     await db.startSession(widget.app.packageName, widget.app.name);
-    if (afterInterceptionFlow) {
-      ForegroundInterceptGuard.recordPostLaunchBypass(widget.app.packageName);
-    }
-    
-    // Pop the InterceptionScreen FIRST to return to the launcher securely
+    // Always record bypass so the Accessibility service doesn't re-intercept immediately
+    ForegroundInterceptGuard.recordPostLaunchBypass(widget.app.packageName);
+
+    // Pop the InterceptionScreen FIRST, then let Flutter settle before foregrounding the app
     if (mounted) Navigator.pop(context);
-    
-    // Tiny delay to let the Flutter route transition finish before bringing the external app to front,
-    // which prevents Android from bouncing back to the launcher.
     await Future.delayed(const Duration(milliseconds: 50));
-    
+
     InstalledApps.startApp(widget.app.packageName);
   }
 
@@ -1378,7 +1372,6 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
                   );
                   await RisingTideService.setReopenLock(widget.app.packageName);
                   await _launchApp(afterInterceptionFlow: true);
-                  if (mounted) Navigator.pop(context);
                 },
           isPrimary: false,
           isDisabled: disabled,
@@ -9358,7 +9351,7 @@ class KoraLauncher extends StatelessWidget {
   }
 }
 import 'package:flutter/material.dart';
-import '../services/launcher_service.dart';
+
 import '../services/native_service.dart';
 import '../services/todo_service.dart';
 import '../services/storage_service.dart';
@@ -9394,8 +9387,8 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _loadInitialData() async {
-    await LauncherService.refreshApps();
-    await TodoService.init();
+    // main.dart already ran LauncherService.init(), UsageService.refreshUsage(), TodoService.init().
+    // We only need to poll permissions and restore goal/onboarding state here.
     await refreshHomeState();
 
     if (!StorageService.hasCompletedOnboarding()) {

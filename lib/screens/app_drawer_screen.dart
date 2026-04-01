@@ -146,12 +146,12 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
                       child: NotificationListener<ScrollNotification>(
                         onNotification: (notification) {
                           // Detect when user is at the top AND pulls down (overscroll)
-                          if (notification is ScrollUpdateNotification) {
-                            if (notification.metrics.pixels <= -60) {
-                              _searchFocusNode.unfocus();
-                              Navigator.maybePop(context);
-                              return true;
-                            }
+                          // Using a lower threshold (-30) and capturing all scroll notification types
+                          // for immediate, snappy closure.
+                          if (notification.metrics.pixels <= -30) {
+                            _searchFocusNode.unfocus();
+                            Navigator.maybePop(context);
+                            return true;
                           }
                           return false;
                         },

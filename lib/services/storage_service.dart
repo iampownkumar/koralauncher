@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'rising_tide_service.dart';
 
@@ -34,7 +35,7 @@ class StorageService {
       apps.add(packageName);
     }
     await _prefs.setStringList(_flaggedAppsKey, apps);
-    
+
     // Sync state to native Accessibility service
     await RisingTideService.syncInterceptionState();
   }
@@ -50,16 +51,21 @@ class StorageService {
 
   static Future<void> setRisingTideMasterEnabled(bool enabled) async {
     await _prefs.setBool(_risingTideMasterKey, enabled);
+    debugPrint("RisingTide: Master toggle set to $enabled");
     await RisingTideService.syncInterceptionState();
   }
 
   // --- Per-app daily time limit (Rising Tide) ---
 
   static int getAppDailyLimitMinutes(String packageName) {
-    return _prefs.getInt('$_appLimitPrefix$packageName') ?? _defaultDailyLimitMinutes;
+    return _prefs.getInt('$_appLimitPrefix$packageName') ??
+        _defaultDailyLimitMinutes;
   }
 
-  static Future<void> setAppDailyLimitMinutes(String packageName, int minutes) async {
+  static Future<void> setAppDailyLimitMinutes(
+    String packageName,
+    int minutes,
+  ) async {
     final m = minutes.clamp(1, 24 * 60);
     await _prefs.setInt('$_appLimitPrefix$packageName', m);
   }
@@ -103,7 +109,7 @@ class StorageService {
   }
 
   static String? getString(String key) => _prefs.getString(key);
-  
+
   static Future<void> setString(String key, String value) async {
     await _prefs.setString(key, value);
   }
@@ -120,7 +126,4 @@ class StorageService {
   static Future<void> completeOnboarding() async {
     await _prefs.setBool('has_completed_onboarding', true);
   }
-
-
 }
-
