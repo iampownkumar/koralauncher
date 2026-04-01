@@ -13,6 +13,7 @@ import '../services/storage_service.dart';
 import '../services/app_lock_manager.dart';
 import '../services/foreground_intercept_guard.dart';
 import '../utils/limit_time_format.dart';
+import '../services/native_service.dart';
 import '../services/todo_service.dart';
 import '../database/kora_database.dart';
 
@@ -131,20 +132,38 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   }
 
   Future<void> _launchApp({bool afterInterceptionFlow = false}) async {
-    // Increment open count exactly once, at the point of actual launch
-    await StorageService.incrementTodayOpenCount(widget.app.packageName);
-    // Log session in database
-    await db.startSession(widget.app.packageName, widget.app.name);
-    // Always record bypass so the Accessibility service doesn't re-intercept immediately
-    ForegroundInterceptGuard.recordPostLaunchBypass(widget.app.packageName);
+    final pkg = widget.app.packageName;
 
-    // Pop the InterceptionScreen FIRST, then let Flutter settle before foregrounding the app.
-    // Increased to 200ms to avoid focus race conditions where the Launcher might "steal" back focus
-    // immediately after the pop animation starts.
+    // Step 1: Increment open count and log session
+    await StorageService.incrementTodayOpenCount(pkg);
+    await db.startSession(pkg, widget.app.name);
+
+    // Step 2: Register the bypass BEFORE removing from blocklist so shouldSkipForPackage
+    // returns true immediately if the accessibility service fires during this window.
+    ForegroundInterceptGuard.recordPostLaunchBypass(pkg,
+        window: const Duration(seconds: 6));
+
+    // Step 3: Remove this specific app from the native blocklist NOW.
+    // This prevents AccessibilityWatcherService from calling startActivity + onAppForeground
+    // the instant the target app reaches the foreground, which was causing Kora to crash.
+    final currentBlockList = StorageService.getFlaggedApps()
+        .where((p) =>
+            p != pkg && RisingTideService.getStage(p) != RisingTideStage.whisper)
+        .toList();
+    await NativeService.sendBlockedApps(currentBlockList);
+
+    // Step 4: Pop the InterceptionScreen and give Flutter 200ms to settle.
     if (mounted) Navigator.pop(context);
     await Future.delayed(const Duration(milliseconds: 200));
 
-    InstalledApps.startApp(widget.app.packageName);
+    // Step 5: Launch the target app.
+    InstalledApps.startApp(pkg);
+
+    // Step 6: After a safe delay, restore the full blocklist.
+    // We wait 5s so the user has time to actually see the app before the gate restores.
+    Future.delayed(const Duration(seconds: 5), () {
+      RisingTideService.syncInterceptionState();
+    });
   }
 
   @override
