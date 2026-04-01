@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import '../services/launcher_service.dart';
+
 import '../services/native_service.dart';
 import '../services/todo_service.dart';
 import '../services/storage_service.dart';
 import '../services/usage_service.dart';
+import '../services/rising_tide_service.dart';
 
 class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   bool showGoalSetter = false;
@@ -35,8 +36,8 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> _loadInitialData() async {
-    await LauncherService.refreshApps();
-    await TodoService.init();
+    // main.dart already ran LauncherService.init(), UsageService.refreshUsage(), TodoService.init().
+    // We only need to poll permissions and restore goal/onboarding state here.
     await refreshHomeState();
 
     if (!StorageService.hasCompletedOnboarding()) {
@@ -57,6 +58,7 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
     await UsageService.refreshUsage();
     await TodoService.refreshTodos();
     final newGoal = StorageService.getDailyIntention();
+    await RisingTideService.syncInterceptionState();
 
     if (isDefaultLauncher != isDefault ||
         hasUsagePermission != hasUsage ||

@@ -41,4 +41,26 @@ class RisingTideLogger {
       detail: 'mood:$mood',
     );
   }
+
+  static Future<void> logMoodSelected(String packageName, String mood) async {
+    await logTideEvent(
+      packageName: packageName,
+      eventType: 'mood_selected',
+      detail: mood,
+    );
+  }
+
+  static Future<void> logReopenLockApplied(String packageName) async {
+    await logTideEvent(
+      packageName: packageName,
+      eventType: 'reopen_lock_applied',
+    );
+  }
+
+  static Future<void> logReopenLockCleared(String packageName) async {
+    await logTideEvent(
+      packageName: packageName,
+      eventType: 'reopen_lock_cleared',
+    );
+  }
 }

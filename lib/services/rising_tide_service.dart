@@ -3,6 +3,7 @@ import 'usage_service.dart';
 import 'storage_service.dart';
 import 'native_service.dart';
 import 'app_lock_manager.dart';
+import 'rising_tide_logger.dart';
 
 class RisingTideService {
   static String? _cachedIntention;
@@ -64,11 +65,19 @@ class RisingTideService {
       return;
     }
 
-    // Send all flagged apps to the native watcher so it can dynamically evaluate stages on launch.
-    // If we filter out 'whisper' here, the native service will ignore the app and it will never transition
-    // to dim/mirror/silence when launched outside of our launcher.
-    final interceptedPackages = StorageService.getFlaggedApps();
-    await NativeService.sendBlockedApps(interceptedPackages);
+    // Only send apps to the native watcher that are currently in a blocking stage (Dim, Mirror, Silence).
+    // This prevents the native service from "stealing focus" (bringing Kora to front) for apps
+    // that should be allowed to open directly in the Whisper stage.
+    final allFlagged = StorageService.getFlaggedApps();
+    final List<String> toBlock = [];
+
+    for (final pkg in allFlagged) {
+      if (getStage(pkg) != RisingTideStage.whisper) {
+        toBlock.add(pkg);
+      }
+    }
+
+    await NativeService.sendBlockedApps(toBlock);
   }
 
   /// Today's opens (gate visits + whisper launches) and minutes (usage stats, same source as [getStage]).
@@ -124,6 +133,7 @@ class RisingTideService {
   static Future<void> setReopenLock(String packageName) async {
     final expiry = DateTime.now().add(const Duration(minutes: 5));
     await StorageService.setString(_lockKeyPrefix + packageName, expiry.toIso8601String());
+    await RisingTideLogger.logReopenLockApplied(packageName);
   }
 
   /// Returns the remaining duration of the lock, or Duration.zero if not locked.
@@ -162,6 +172,7 @@ class RisingTideService {
   /// Clears the lock when the user finishes a mindful flow.
   static Future<void> clearReopenLock(String packageName) async {
     await StorageService.remove(_lockKeyPrefix + packageName);
+    await RisingTideLogger.logReopenLockCleared(packageName);
   }
 
   /// Gets the cached intention or fetches it from storage.
