@@ -31,31 +31,18 @@ class RisingTideService {
       return RisingTideStage.whisper;
     }
     final usagePercent = usageMinutes / limitMin;
-    final overrides = getTodayOverrideCount(packageName);
 
-    RisingTideStage stage;
-    if (usagePercent >= 2.0 || overrides >= 3) {
-      stage = RisingTideStage.silence;
-    } else if (usagePercent >= 1.0 || overrides >= 2) {
-      stage = RisingTideStage.mirror;
-    } else if (usagePercent >= 0.5) {
-      stage = RisingTideStage.dim;
-    } else {
-      stage = RisingTideStage.whisper;
-    }
-
-    // Reopen lock (readme): force the same gate again (Stage 2 or 3), not an upgrade to mirror.
+    // Reopen lock keeps the gate active for 5 minutes after a Continue
     if (isPackageLocked(packageName)) {
-      if (stage == RisingTideStage.silence) {
-        return RisingTideStage.silence;
-      }
-      if (stage == RisingTideStage.whisper) {
-        return RisingTideStage.dim;
-      }
-      return stage;
+      return RisingTideStage.dim;
     }
 
-    return stage;
+    // Dim gate triggers at 50% of the daily limit
+    if (usagePercent >= 0.5) {
+      return RisingTideStage.dim;
+    }
+
+    return RisingTideStage.whisper;
   }
 
   /// Synchronizes the list of apps that need interception with the native Accessibility service.

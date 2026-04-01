@@ -10,12 +10,10 @@ import '../services/usage_service.dart';
 import '../widgets/gate_settings_sheet.dart';
 import '../database/database_provider.dart';
 import '../services/storage_service.dart';
-import '../services/app_lock_manager.dart';
-import '../services/foreground_intercept_guard.dart';
-import '../utils/limit_time_format.dart';
+  import '../services/foreground_intercept_guard.dart';
 import '../services/native_service.dart';
-import '../services/todo_service.dart';
-import '../database/kora_database.dart';
+import '../utils/limit_time_format.dart';
+
 
 class InterceptionScreen extends StatefulWidget {
   final AppInfo app;
@@ -29,9 +27,10 @@ class InterceptionScreen extends StatefulWidget {
 class _InterceptionScreenState extends State<InterceptionScreen> {
   late RisingTideStage _stage;
   bool _isLoading = true;
-  // Stats for Stage 2–4
+
   int _opensToday = 0;
   int _minutesToday = 0;
+  int _limitMinutes = 0;
   String? _dailyIntention;
 
   // Flow control
@@ -39,20 +38,14 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   int _countdownSeconds = 5;
   Timer? _countdownTimer;
 
-  // Reopen lock countdown
+  // Reopen lock display
   int _lockRemainingSeconds = 0;
   Timer? _lockTimer;
   int _overridesCount = 0;
-  // Tasks state
-  bool _showTasks = false;
-  List<Todo> _tasks = [];
 
   @override
   void initState() {
     super.initState();
-    // Defer init until after first frame so the route is fully mounted.
-    // Without this, Navigator.pop() called from Whisper fast-path crashes
-    // because the route isn't yet in the navigator stack.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _initStage();
     });
@@ -70,7 +63,6 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
     final stage = RisingTideService.getStage(widget.app.packageName);
 
     if (stage == RisingTideStage.whisper) {
-      // Whisper: no interception, launch directly
       await _launchApp();
       return;
     }
@@ -83,29 +75,25 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
         _stage = stage;
         _opensToday = stats['opens'] ?? 0;
         _minutesToday = stats['minutes'] ?? 0;
+        _limitMinutes = RisingTideService.getAppDailyLimit(widget.app.packageName).inMinutes;
         _isLoading = false;
 
-        if (_stage == RisingTideStage.silence) {
-          _tasks = TodoService.todos.where((t) => !t.isCompleted).toList();
-        } else {
-          _startInitialCountdown();
+        _startInitialCountdown();
 
-          // Show reopen lock timer if this open was triggered by a reopen lock
-          _overridesCount = RisingTideService.getTodayOverrideCount(widget.app.packageName);
-          final lockRemaining = RisingTideService.getRemainingLockDuration(widget.app.packageName);
-          if (lockRemaining > Duration.zero) {
-            _lockRemainingSeconds = lockRemaining.inSeconds;
-            _lockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-              if (!mounted) return;
-              setState(() {
-                if (_lockRemainingSeconds > 0) {
-                  _lockRemainingSeconds--;
-                } else {
-                  _lockTimer?.cancel();
-                }
-              });
+        _overridesCount = RisingTideService.getTodayOverrideCount(widget.app.packageName);
+        final lockRemaining = RisingTideService.getRemainingLockDuration(widget.app.packageName);
+        if (lockRemaining > Duration.zero) {
+          _lockRemainingSeconds = lockRemaining.inSeconds;
+          _lockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+            if (!mounted) return;
+            setState(() {
+              if (_lockRemainingSeconds > 0) {
+                _lockRemainingSeconds--;
+              } else {
+                _lockTimer?.cancel();
+              }
             });
-          }
+          });
         }
       });
       RisingTideLogger.logAppOpen(widget.app.packageName, _stage);
@@ -115,7 +103,6 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   void _startInitialCountdown() {
     _countdownTimer?.cancel();
     _countdownSeconds = 5;
-
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) {
         setState(() {
@@ -134,33 +121,26 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   Future<void> _launchApp({bool afterInterceptionFlow = false}) async {
     final pkg = widget.app.packageName;
 
-    // Step 1: Increment open count and log session
     await StorageService.incrementTodayOpenCount(pkg);
     await db.startSession(pkg, widget.app.name);
 
-    // Step 2: Register the bypass BEFORE removing from blocklist so shouldSkipForPackage
-    // returns true immediately if the accessibility service fires during this window.
+    // Register bypass BEFORE removing from blocklist
     ForegroundInterceptGuard.recordPostLaunchBypass(pkg,
         window: const Duration(seconds: 6));
 
-    // Step 3: Remove this specific app from the native blocklist NOW.
-    // This prevents AccessibilityWatcherService from calling startActivity + onAppForeground
-    // the instant the target app reaches the foreground, which was causing Kora to crash.
+    // Temporarily remove from native blocklist to prevent Accessibility re-intercept
     final currentBlockList = StorageService.getFlaggedApps()
         .where((p) =>
             p != pkg && RisingTideService.getStage(p) != RisingTideStage.whisper)
         .toList();
     await NativeService.sendBlockedApps(currentBlockList);
 
-    // Step 4: Pop the InterceptionScreen and give Flutter 200ms to settle.
     if (mounted) Navigator.pop(context);
     await Future.delayed(const Duration(milliseconds: 200));
 
-    // Step 5: Launch the target app.
     InstalledApps.startApp(pkg);
 
-    // Step 6: After a safe delay, restore the full blocklist.
-    // We wait 5s so the user has time to actually see the app before the gate restores.
+    // Restore the full blocklist after the app is open
     Future.delayed(const Duration(seconds: 5), () {
       RisingTideService.syncInterceptionState();
     });
@@ -179,48 +159,34 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
       backgroundColor: const Color(0xFF0F172A),
       body: Stack(
         children: [
-          // Background - Semi-transparent app icon or just slate
-          Positioned.fill(child: Container(color: const Color(0xFF0F172A))),
-
-          // Glassmorphic Layer
           Positioned.fill(
             child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: _getSigma(),
-                sigmaY: _getSigma(),
-              ),
+              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
               child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      const Color(
-                        0xFF1E293B,
-                      ).withValues(alpha: _getOverlayOpacity() * 0.7),
-                      const Color(
-                        0xFF0F172A,
-                      ).withValues(alpha: _getOverlayOpacity()),
+                      const Color(0xFF1E293B).withValues(alpha: 0.65),
+                      const Color(0xFF0F172A).withValues(alpha: 0.95),
                     ],
                   ),
                 ),
               ),
             ),
           ),
-
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
                 children: [
                   const SizedBox(height: 16),
-                  // Reopen-lock banner
-                  if (_lockRemainingSeconds > 0)
-                    _buildLockBanner(),
+                  if (_lockRemainingSeconds > 0) _buildLockBanner(),
                   const SizedBox(height: 24),
                   _buildAppHeader(),
                   const Spacer(),
-                  _buildStageContent(),
+                  _buildDimContent(),
                   const Spacer(),
                   _buildActionButtons(),
                   const SizedBox(height: 40),
@@ -231,32 +197,6 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
         ],
       ),
     );
-  }
-
-  double _getSigma() {
-    switch (_stage) {
-      case RisingTideStage.whisper:
-        return 5;
-      case RisingTideStage.dim:
-        return 15;
-      case RisingTideStage.mirror:
-        return 30;
-      case RisingTideStage.silence:
-        return 50;
-    }
-  }
-
-  double _getOverlayOpacity() {
-    switch (_stage) {
-      case RisingTideStage.whisper:
-        return 0.2;
-      case RisingTideStage.dim:
-        return 0.4;
-      case RisingTideStage.mirror:
-        return 0.6;
-      case RisingTideStage.silence:
-        return 0.8;
-    }
   }
 
   Widget _buildLockBanner() {
@@ -294,14 +234,11 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   Widget _buildAppHeader() {
     return Column(
       children: [
-        Hero(
-          tag: widget.app.packageName,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: widget.app.icon != null
-                ? Image.memory(widget.app.icon!, width: 64, height: 64)
-                : const Icon(Icons.apps, size: 64, color: Colors.white24),
-          ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: widget.app.icon != null
+              ? Image.memory(widget.app.icon!, width: 64, height: 64)
+              : const Icon(Icons.apps, size: 64, color: Colors.white24),
         ),
         const SizedBox(height: 12),
         Text(
@@ -317,20 +254,10 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
     );
   }
 
-  Widget _buildStageContent() {
-    switch (_stage) {
-      case RisingTideStage.dim:
-        return _buildDimContent();
-      case RisingTideStage.mirror:
-        return _buildMirrorContent();
-      case RisingTideStage.silence:
-        return _buildSilenceContent();
-      default:
-        return const SizedBox();
-    }
-  }
-
   Widget _buildDimContent() {
+    final remaining = _limitMinutes - _minutesToday;
+    final remainingClamped = remaining.clamp(0, _limitMinutes);
+
     return Column(
       children: [
         const Text(
@@ -344,82 +271,88 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 16),
+        // Clear usage summary
         Text(
-          "You've used ${widget.app.name} for $_minutesToday mins today.\nWhat's the vibe?",
+          "You've used ${widget.app.name} for $_minutesToday ${_minutesToday == 1 ? 'minute' : 'minutes'} today.",
+          style: TextStyle(
+            fontSize: 18,
+            color: Colors.white.withValues(alpha: 0.8),
+            height: 1.5,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          "You have $remainingClamped ${remainingClamped == 1 ? 'minute' : 'minutes'} left.",
           style: TextStyle(
             fontSize: 16,
-            color: Colors.white.withValues(alpha: 0.6),
+            color: Colors.white.withValues(alpha: 0.55),
             height: 1.5,
           ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 12),
+        // Progress bar
+        _buildUsageBar(),
+        const SizedBox(height: 8),
         Text(
-          'Opens: $_opensToday · Overrides: $_overridesCount · Limit ${LimitTimeFormat.dualLabel(RisingTideService.getAppDailyLimit(widget.app.packageName).inMinutes)}',
+          'Opens: $_opensToday${_overridesCount > 0 ? ' · Overrides: $_overridesCount' : ''} · Limit ${LimitTimeFormat.dualLabel(_limitMinutes)}',
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 12,
             color: Colors.white.withValues(alpha: 0.35),
           ),
           textAlign: TextAlign.center,
         ),
         _buildGateSettingsLink(),
         const SizedBox(height: 24),
+        if (_dailyIntention != null) ...[
+          Text(
+            '"$_dailyIntention"',
+            style: TextStyle(
+              fontSize: 15,
+              fontStyle: FontStyle.italic,
+              color: Colors.white.withValues(alpha: 0.4),
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+        ],
         _buildMoodSelector(),
       ],
     );
   }
 
-  Widget _buildMirrorContent() {
-    return Column(
-      children: [
-        const Text(
-          "Limit Reached",
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-            color: Colors.redAccent,
-            letterSpacing: 4,
+  Widget _buildUsageBar() {
+    final progress = _limitMinutes > 0
+        ? (_minutesToday / _limitMinutes).clamp(0.0, 1.0)
+        : 0.0;
+    return LayoutBuilder(builder: (context, constraints) {
+      return Container(
+        height: 6,
+        width: constraints.maxWidth * 0.7,
+        decoration: BoxDecoration(
+          color: Colors.white12,
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 600),
+            width: constraints.maxWidth * 0.7 * progress,
+            height: 6,
+            decoration: BoxDecoration(
+              color: progress >= 0.9
+                  ? Colors.redAccent
+                  : progress >= 0.7
+                      ? Colors.orange
+                      : Colors.white70,
+              borderRadius: BorderRadius.circular(3),
+            ),
           ),
         ),
-        const SizedBox(height: 24),
-        if (_dailyIntention != null) ...[
-          Text(
-            "\"$_dailyIntention\"",
-            style: const TextStyle(
-              fontSize: 24,
-              fontStyle: FontStyle.italic,
-              color: Colors.white,
-              height: 1.4,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            "Does opening this help with your intention?",
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.white.withValues(alpha: 0.5),
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ] else ...[
-          const Text(
-            "No note for today (optional).",
-            style: TextStyle(fontSize: 18, color: Colors.white70),
-          ),
-          TextButton(
-            onPressed: _showGateSettings,
-            child: const Text(
-              "Set daily limit",
-              style: TextStyle(color: Colors.blueAccent),
-            ),
-          ),
-        ],
-        const SizedBox(height: 32),
-        _buildStatsRow(),
-        if (_dailyIntention != null) _buildGateSettingsLink(),
-      ],
-    );
+      );
+    });
   }
 
   void _showGateSettings() {
@@ -452,14 +385,12 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
             await _launchApp();
             return;
           }
-          final stats = await RisingTideService.getStats(
-            widget.app.packageName,
-          );
+          final stats = await RisingTideService.getStats(widget.app.packageName);
           if (mounted) {
             setState(() {
-              _stage = newStage;
               _opensToday = stats['opens'] ?? 0;
               _minutesToday = stats['minutes'] ?? 0;
+              _limitMinutes = limit;
               _dailyIntention = RisingTideService.getDailyIntention();
             });
           }
@@ -471,178 +402,11 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   Widget _buildGateSettingsLink() {
     return TextButton.icon(
       onPressed: _showGateSettings,
-      icon: Icon(
-        Icons.tune,
-        size: 18,
-        color: Colors.white.withValues(alpha: 0.4),
-      ),
+      icon: Icon(Icons.tune, size: 16, color: Colors.white.withValues(alpha: 0.35)),
       label: Text(
         'Edit limit & optional note',
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.4),
-          fontSize: 13,
-        ),
+        style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 12),
       ),
-    );
-  }
-
-  Widget _buildStatsRow() {
-    final limit = RisingTideService.getAppDailyLimit(
-      widget.app.packageName,
-    ).inMinutes;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _buildStatItem("Opens Today", "$_opensToday"),
-        const SizedBox(width: 40),
-        _buildStatItem(
-          "Time vs limit",
-          "${LimitTimeFormat.compact(_minutesToday)} / ${LimitTimeFormat.compact(limit)}",
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatItem(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12, color: Colors.white38),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSilenceContent() {
-    if (_showTasks) {
-      return Column(
-        children: [
-          const Text(
-            "Complete a task to unlock 5m",
-            style: TextStyle(fontSize: 18, color: Colors.white70),
-          ),
-          const SizedBox(height: 24),
-          if (_tasks.isEmpty)
-            const Text(
-              "No tasks remaining today.",
-              style: TextStyle(color: Colors.white38),
-            )
-          else
-            ..._tasks.map(
-              (task) => Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: InkWell(
-                  onTap: () async {
-                    await TodoService.toggleTodo(task.id);
-                    await AppLockManager.grantUnlock(
-                      widget.app.packageName,
-                      minutes: 5,
-                    );
-                    await RisingTideService.syncInterceptionState();
-                    RisingTideLogger.logTideEvent(
-                      packageName: widget.app.packageName,
-                      eventType: 'stage4_task_unlock',
-                      stage: RisingTideStage.silence,
-                      detail: task.title,
-                    );
-                    await _launchApp(afterInterceptionFlow: true);
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      border: Border.all(color: Colors.white12),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.circle_outlined,
-                          color: Colors.white38,
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Text(
-                            task.title,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          const SizedBox(height: 24),
-          TextButton(
-            onPressed: () => setState(() => _showTasks = false),
-            child: const Text(
-              "Go back",
-              style: TextStyle(color: Colors.white54),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      children: [
-        const Text(
-          "Silence",
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-            color: Colors.white38,
-            letterSpacing: 8,
-          ),
-        ),
-        const SizedBox(height: 32),
-        const Text(
-          "You've chosen to stop here today.",
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w300,
-            color: Colors.white70,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 24),
-        if (_dailyIntention != null) ...[
-          Text(
-            "\"$_dailyIntention\"",
-            style: const TextStyle(
-              fontSize: 18,
-              fontStyle: FontStyle.italic,
-              color: Colors.white54,
-              height: 1.4,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ] else ...[
-          const Text(
-            "No note for today",
-            style: TextStyle(
-              fontSize: 18,
-              fontStyle: FontStyle.italic,
-              color: Colors.white54,
-            ),
-          ),
-        ],
-        const SizedBox(height: 24),
-        _buildStatsRow(),
-        _buildGateSettingsLink(),
-      ],
     );
   }
 
@@ -670,15 +434,12 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? Colors.white
-                  : Colors.white.withValues(alpha: 0.1),
+              color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(30),
               border: Border.all(
                 color: isSelected ? Colors.white : Colors.white12,
-                width: 1,
               ),
             ),
             child: Text(
@@ -686,6 +447,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
               style: TextStyle(
                 color: isSelected ? Colors.black : Colors.white70,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 14,
               ),
             ),
           ),
@@ -695,36 +457,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   }
 
   Widget _buildActionButtons() {
-    if (_stage == RisingTideStage.silence) {
-      if (_showTasks) {
-        return const SizedBox(); // Action buttons hidden in task view
-      }
-
-      final bool usedUnlock = AppLockManager.hasUsedUnlockToday(
-        widget.app.packageName,
-      );
-
-      return Column(
-        children: [
-          _buildGlassButton(
-            title: "Come back tomorrow",
-            onTap: () => Navigator.pop(context),
-            isPrimary: true,
-          ),
-          if (!usedUnlock) ...[
-            const SizedBox(height: 16),
-            _buildGlassButton(
-              title: "Complete a task to unlock 5 minutes",
-              onTap: () => setState(() => _showTasks = true),
-              isPrimary: false,
-            ),
-          ],
-        ],
-      );
-    }
-
-    final bool moodRequired =
-        _stage == RisingTideStage.dim && _selectedMood == null;
+    final bool moodRequired = _selectedMood == null;
     final bool countdownActive = _countdownSeconds > 0;
     final bool disabled = moodRequired || countdownActive;
 
@@ -733,8 +466,6 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
         _buildGlassButton(
           title: "Never mind, go back",
           onTap: () async {
-            // Do NOT clear reopen lock on go-back — lock must stay so next open
-            // is gated again within the 5-minute window.
             RisingTideLogger.logDecision(
               widget.app.packageName,
               "goback",
@@ -759,9 +490,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
                     "continue",
                     _selectedMood ?? "conscious",
                   );
-                  await RisingTideService.recordOverride(
-                    widget.app.packageName,
-                  );
+                  await RisingTideService.recordOverride(widget.app.packageName);
                   await RisingTideService.setReopenLock(widget.app.packageName);
                   await _launchApp(afterInterceptionFlow: true);
                 },
@@ -784,7 +513,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   }) {
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 300),
-      opacity: isDisabled && !isCountdown ? 0.3 : 1.0,
+      opacity: isDisabled && !isCountdown ? 0.4 : 1.0,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
@@ -798,7 +527,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: isCountdown
-                  ? Colors.white.withValues(alpha: 0.3 + 0.3 * countdownProgress)
+                  ? Colors.white.withValues(alpha: 0.25 + 0.35 * countdownProgress)
                   : Colors.white10,
             ),
           ),
@@ -806,11 +535,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
             alignment: Alignment.center,
             children: [
               if (isCountdown)
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  top: 0,
+                Positioned.fill(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(20),
                     child: Align(
@@ -819,9 +544,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
                         duration: const Duration(milliseconds: 900),
                         curve: Curves.linear,
                         widthFactor: countdownProgress,
-                        child: Container(
-                          color: Colors.white.withValues(alpha: 0.08),
-                        ),
+                        child: Container(color: Colors.white.withValues(alpha: 0.07)),
                       ),
                     ),
                   ),
