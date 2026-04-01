@@ -38,6 +38,10 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   int _countdownSeconds = 5;
   Timer? _countdownTimer;
 
+  // Reopen lock countdown
+  int _lockRemainingSeconds = 0;
+  Timer? _lockTimer;
+  int _overridesCount = 0;
   // Tasks state
   bool _showTasks = false;
   List<Todo> _tasks = [];
@@ -56,6 +60,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   @override
   void dispose() {
     _countdownTimer?.cancel();
+    _lockTimer?.cancel();
     super.dispose();
   }
 
@@ -79,11 +84,27 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
         _minutesToday = stats['minutes'] ?? 0;
         _isLoading = false;
 
-        // Stage 4 / Silence has no countdown and is always blocked
         if (_stage == RisingTideStage.silence) {
           _tasks = TodoService.todos.where((t) => !t.isCompleted).toList();
         } else {
           _startInitialCountdown();
+
+          // Show reopen lock timer if this open was triggered by a reopen lock
+          _overridesCount = RisingTideService.getTodayOverrideCount(widget.app.packageName);
+          final lockRemaining = RisingTideService.getRemainingLockDuration(widget.app.packageName);
+          if (lockRemaining > Duration.zero) {
+            _lockRemainingSeconds = lockRemaining.inSeconds;
+            _lockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+              if (!mounted) return;
+              setState(() {
+                if (_lockRemainingSeconds > 0) {
+                  _lockRemainingSeconds--;
+                } else {
+                  _lockTimer?.cancel();
+                }
+              });
+            });
+          }
         }
       });
       RisingTideLogger.logAppOpen(widget.app.packageName, _stage);
@@ -173,7 +194,11 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
                 children: [
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 16),
+                  // Reopen-lock banner
+                  if (_lockRemainingSeconds > 0)
+                    _buildLockBanner(),
+                  const SizedBox(height: 24),
                   _buildAppHeader(),
                   const Spacer(),
                   _buildStageContent(),
@@ -213,6 +238,38 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
       case RisingTideStage.silence:
         return 0.8;
     }
+  }
+
+  Widget _buildLockBanner() {
+    final mins = _lockRemainingSeconds ~/ 60;
+    final secs = _lockRemainingSeconds % 60;
+    final label = mins > 0
+        ? 'Reopen lock: ${mins}m ${secs.toString().padLeft(2, '0')}s remaining'
+        : 'Reopen lock: ${secs}s remaining';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.lock_clock, size: 14, color: Colors.orange.withValues(alpha: 0.7)),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.orange.withValues(alpha: 0.8),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildAppHeader() {
@@ -279,7 +336,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
         ),
         const SizedBox(height: 12),
         Text(
-          'Opens today: $_opensToday · Limit ${LimitTimeFormat.dualLabel(RisingTideService.getAppDailyLimit(widget.app.packageName).inMinutes)}',
+          'Opens: $_opensToday · Overrides: $_overridesCount · Limit ${LimitTimeFormat.dualLabel(RisingTideService.getAppDailyLimit(widget.app.packageName).inMinutes)}',
           style: TextStyle(
             fontSize: 13,
             color: Colors.white.withValues(alpha: 0.35),
@@ -671,8 +728,10 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
         const SizedBox(height: 16),
         _buildGlassButton(
           title: countdownActive
-              ? "Wait ${_countdownSeconds}s"
-              : "Continue anyway",
+              ? "Wait ${_countdownSeconds}s…"
+              : moodRequired
+                  ? "Select a mood first"
+                  : "Continue anyway",
           onTap: disabled
               ? null
               : () async {
@@ -689,6 +748,8 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
                 },
           isPrimary: false,
           isDisabled: disabled,
+          isCountdown: countdownActive,
+          countdownProgress: countdownActive ? (5 - _countdownSeconds) / 5.0 : 1.0,
         ),
       ],
     );
@@ -699,10 +760,12 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
     required VoidCallback? onTap,
     bool isPrimary = false,
     bool isDisabled = false,
+    bool isCountdown = false,
+    double countdownProgress = 0.0,
   }) {
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 300),
-      opacity: isDisabled ? 0.3 : 1.0,
+      opacity: isDisabled && !isCountdown ? 0.3 : 1.0,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
@@ -714,17 +777,45 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
                 ? Colors.white
                 : Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white10),
-          ),
-          child: Center(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: isPrimary ? Colors.black : Colors.white,
-              ),
+            border: Border.all(
+              color: isCountdown
+                  ? Colors.white.withValues(alpha: 0.3 + 0.3 * countdownProgress)
+                  : Colors.white10,
             ),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (isCountdown)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  top: 0,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: AnimatedFractionallySizedBox(
+                        duration: const Duration(milliseconds: 900),
+                        curve: Curves.linear,
+                        widthFactor: countdownProgress,
+                        child: Container(
+                          color: Colors.white.withValues(alpha: 0.08),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isPrimary ? Colors.black : Colors.white,
+                ),
+              ),
+            ],
           ),
         ),
       ),

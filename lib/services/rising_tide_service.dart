@@ -31,7 +31,7 @@ class RisingTideService {
       return RisingTideStage.whisper;
     }
     final usagePercent = usageMinutes / limitMin;
-    final overrides = _getTodayOverrideCount(packageName);
+    final overrides = getTodayOverrideCount(packageName);
 
     RisingTideStage stage;
     if (usagePercent >= 2.0 || overrides >= 3) {
@@ -95,7 +95,7 @@ class RisingTideService {
   }
 
   /// Returns how many times the user has chosen to "Continue" today for this app.
-  static int _getTodayOverrideCount(String packageName) {
+  static int getTodayOverrideCount(String packageName) {
     final today = _localDayKey(DateTime.now());
     final key = 'rt_overrides_${today}_$packageName';
     return int.tryParse(StorageService.getString(key) ?? '0') ?? 0;
@@ -111,11 +111,10 @@ class RisingTideService {
   }
 
   static Future<void> recordOverride(String packageName) async {
-    final count = _getTodayOverrideCount(packageName);
+    final count = getTodayOverrideCount(packageName);
     final today = _localDayKey(DateTime.now());
     final key = 'rt_overrides_${today}_$packageName';
     await StorageService.setString(key, (count + 1).toString());
-    
     // Sync state immediately to native
     await syncInterceptionState();
   }
