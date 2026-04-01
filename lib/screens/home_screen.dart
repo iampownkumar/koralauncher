@@ -12,6 +12,7 @@ import 'usage_dashboard_screen.dart';
 import 'tide_pool_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
+import '../widgets/permission_banners.dart';
 import 'package:upgrader/upgrader.dart';
 import 'package:intl/intl.dart';
 
@@ -216,10 +217,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           if (!_isDefaultLauncher)
                             _buildDefaultLauncherBanner(),
                           if (!_hasAccessibilityPermission)
-                            _buildAccessibilityPermissionBanner(),
+                            AccessibilityPermissionBanner(
+                              onEnabled: () {},
+                            ),
                           if (_hasAccessibilityPermission &&
                               !_hasUsagePermission)
-                            _buildUsagePermissionBanner(),
+                            UsagePermissionBanner(
+                              onEnabled: () {},
+                            ),
                           _buildTopInfoBar(),
 
                           // _buildGoalHeader() replaced by chip in top bar
@@ -507,190 +512,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildAccessibilityPermissionBanner() {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.blueAccent.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.security, size: 24, color: Colors.white),
-          const SizedBox(width: 16),
-          const Expanded(
-            child: Text(
-              "Enable Rising Tide protection",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  backgroundColor: const Color(0xFF1E293B),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  title: const Text(
-                    "Accessibility Requirement",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  content: const Text(
-                    "Kora uses Accessibility Services to detect when you open habit-forming apps.\n\n"
-                    "This allows us to show you the intentional delay screens and help you stay focused on your goals.\n\n"
-                    "We do NOT use this to collect any private data, keystrokes, or passwords. It is strictly used for app interception.",
-                    style: TextStyle(color: Colors.white70, height: 1.4),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        "Cancel",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await NativeService.openAccessibilitySettings();
-                      },
-                      child: const Text("I Understand"),
-                    ),
-                  ],
-                ),
-              );
-            },
-            child: const Text(
-              "ENABLE",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUsagePermissionBanner() {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.show_chart, size: 24, color: Colors.white),
-          const SizedBox(width: 16),
-          const Expanded(
-            child: Text(
-              "Enable usage stats for insights",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              // foregroundColor: Colors.orange,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  backgroundColor: const Color(0xFF1E293B),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  title: const Text(
-                    "Usage Access Required",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  content: const Text(
-                    "Kora Launcher requires 'Usage Access' permission to monitor which apps you open and for how long.\n\n"
-                    "This allows the Rising Tide system to intercept habit-building apps, measure your screen time accurately, and help you reduce distractions.\n\n"
-                    "Your usage data strictly stays on your device and is never sent to any servers.",
-                    style: TextStyle(color: Colors.white70, height: 1.4),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        "Cancel",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await NativeService.openUsageSettings();
-                      },
-                      child: const Text(
-                        "I Understand",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-            child: const Text(
-              "ENABLE",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildQuickAccessDock() {
     return Padding(

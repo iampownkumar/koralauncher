@@ -13,6 +13,8 @@ import '../services/storage_service.dart';
 import '../services/app_lock_manager.dart';
 import '../services/foreground_intercept_guard.dart';
 import '../utils/limit_time_format.dart';
+import '../services/todo_service.dart';
+import '../database/kora_database.dart';
 
 class InterceptionScreen extends StatefulWidget {
   final AppInfo app;
@@ -39,7 +41,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
 
   // Tasks state
   bool _showTasks = false;
-  List<String> _tasks = [];
+  List<Todo> _tasks = [];
 
   @override
   void initState() {
@@ -77,7 +79,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
 
         // Stage 4 / Silence has no countdown and is always blocked
         if (_stage == RisingTideStage.silence) {
-          _tasks = StorageService.getTodayTasks();
+          _tasks = TodoService.todos.where((t) => !t.isCompleted).toList();
         } else {
           _startInitialCountdown();
         }
@@ -455,7 +457,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
                 padding: const EdgeInsets.only(bottom: 12.0),
                 child: InkWell(
                   onTap: () async {
-                    await StorageService.completeTask(task);
+                    await TodoService.toggleTodo(task.id);
                     await AppLockManager.grantUnlock(
                       widget.app.packageName,
                       minutes: 5,
@@ -464,7 +466,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
                       packageName: widget.app.packageName,
                       eventType: 'stage4_task_unlock',
                       stage: RisingTideStage.silence,
-                      detail: task,
+                      detail: task.title,
                     );
                     await _launchApp(afterInterceptionFlow: true);
                   },
@@ -486,7 +488,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
                         const SizedBox(width: 16),
                         Expanded(
                           child: Text(
-                            task,
+                            task.title,
                             style: const TextStyle(color: Colors.white),
                           ),
                         ),

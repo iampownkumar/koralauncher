@@ -121,27 +121,6 @@ class StorageService {
     await _prefs.setBool('has_completed_onboarding', true);
   }
 
-  // --- Task Mock Methods ---
-  static List<String> getTodayTasks() {
-    // Simulated tasks for now. Later can be tied to a database or intentional to-do list.
-    final tasks = _prefs.getStringList('mock_tasks');
-    if (tasks == null) {
-      final defaultTasks = [
-        "Drink a glass of water",
-        "Take 5 deep breaths",
-        "Stretch for 2 minutes",
-        "Jot down 1 thing you are grateful for"
-      ];
-      _prefs.setStringList('mock_tasks', defaultTasks);
-      return defaultTasks;
-    }
-    return tasks;
-  }
 
-  static Future<void> completeTask(String task) async {
-    final tasks = getTodayTasks();
-    tasks.remove(task);
-    await _prefs.setStringList('mock_tasks', tasks);
-  }
 }
 

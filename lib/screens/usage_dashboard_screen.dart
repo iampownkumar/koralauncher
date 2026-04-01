@@ -8,6 +8,7 @@ import '../services/native_service.dart';
 import '../widgets/app_long_press_menu.dart';
 import 'interception_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
+import '../widgets/permission_banners.dart';
 
 class UsageDashboardScreen extends StatefulWidget {
   const UsageDashboardScreen({super.key});
@@ -98,7 +99,7 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (!_hasUsagePermission) _buildUsagePermissionBanner(),
+                  if (!_hasUsagePermission) UsagePermissionBanner(onEnabled: _loadDashBoardData),
                   _buildSummaryHeader(totalUsage),
                   const SizedBox(height: 16),
                   Padding(
@@ -297,101 +298,5 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
     );
   }
 
-  Widget _buildUsagePermissionBanner() {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.show_chart, size: 24, color: Colors.white),
-          const SizedBox(width: 16),
-          const Expanded(
-            child: Text(
-              "Enable usage stats for insights",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  backgroundColor: const Color(0xFF1E293B),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  title: const Text(
-                    "Usage Access Required",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  content: const Text(
-                    "Kora Launcher requires 'Usage Access' permission to monitor which apps you open and for how long.\n\n"
-                    "This allows the Rising Tide system to intercept habit-building apps, measure your screen time accurately, and help you reduce distractions.\n\n"
-                    "Your usage data strictly stays on your device and is never sent to any servers.",
-                    style: TextStyle(color: Colors.white70, height: 1.4),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        "Cancel",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await NativeService.openUsageSettings();
-                        _loadDashBoardData();
-                      },
-                      child: const Text(
-                        "I Understand",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-            child: const Text(
-              "ENABLE",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 }

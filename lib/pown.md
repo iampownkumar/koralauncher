@@ -277,6 +277,7 @@ import 'usage_dashboard_screen.dart';
 import 'tide_pool_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
+import '../widgets/permission_banners.dart';
 import 'package:upgrader/upgrader.dart';
 import 'package:intl/intl.dart';
 
@@ -330,11 +331,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await UsageService.refreshUsage();
     await TodoService.refreshTodos();
     final newGoal = StorageService.getDailyIntention();
-    
+
     if (!mounted) return;
-    
-    if (_isDefaultLauncher != isDefault || 
-        _hasUsagePermission != hasUsage || 
+
+    if (_isDefaultLauncher != isDefault ||
+        _hasUsagePermission != hasUsage ||
         _hasAccessibilityPermission != hasAccessibility ||
         _goal != newGoal) {
       setState(() {
@@ -352,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await LauncherService.refreshApps();
     await TodoService.init();
     await _refreshHomeState();
-    
+
     if (!StorageService.hasCompletedOnboarding()) {
       if (mounted) {
         setState(() {
@@ -481,9 +482,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           if (!_isDefaultLauncher)
                             _buildDefaultLauncherBanner(),
                           if (!_hasAccessibilityPermission)
-                            _buildAccessibilityPermissionBanner(),
-                          if (_hasAccessibilityPermission && !_hasUsagePermission)
-                            _buildUsagePermissionBanner(),
+                            AccessibilityPermissionBanner(
+                              onEnabled: () {},
+                            ),
+                          if (_hasAccessibilityPermission &&
+                              !_hasUsagePermission)
+                            UsagePermissionBanner(
+                              onEnabled: () {},
+                            ),
                           _buildTopInfoBar(),
 
                           // _buildGoalHeader() replaced by chip in top bar
@@ -598,9 +604,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         children: [
           _buildSetGoalPill(),
           const SizedBox(width: 12),
-          Expanded(
-            child: _buildCenterIntentionText(),
-          ),
+          Expanded(child: _buildCenterIntentionText()),
           const SizedBox(width: 12),
           if (_hasUsagePermission) _buildUsageStats(),
         ],
@@ -642,7 +646,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildCenterIntentionText() {
     final hasGoal = _goal != null && _goal!.isNotEmpty;
-    
+
     Widget textWidget = Text(
       hasGoal ? _goal! : "No intention set",
       textAlign: TextAlign.center,
@@ -674,7 +678,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         child: textWidget,
       );
     }
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -773,184 +777,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildAccessibilityPermissionBanner() {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.blueAccent.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.security, size: 24, color: Colors.white),
-          const SizedBox(width: 16),
-          const Expanded(
-            child: Text(
-              "Enable Rising Tide protection",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  backgroundColor: const Color(0xFF1E293B),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  title: const Text(
-                    "Accessibility Requirement",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  content: const Text(
-                    "Kora uses Accessibility Services to detect when you open habit-forming apps.\n\n"
-                    "This allows us to show you the intentional delay screens and help you stay focused on your goals.\n\n"
-                    "We do NOT use this to collect any private data, keystrokes, or passwords. It is strictly used for app interception.",
-                    style: TextStyle(color: Colors.white70, height: 1.4),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await NativeService.openAccessibilitySettings();
-                      },
-                      child: const Text("I Understand"),
-                    ),
-                  ],
-                ),
-              );
-            },
-            child: const Text("ENABLE", style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUsagePermissionBanner() {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.show_chart, size: 24, color: Colors.white),
-          const SizedBox(width: 16),
-          const Expanded(
-            child: Text(
-              "Enable usage stats for insights",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              // foregroundColor: Colors.orange,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  backgroundColor: const Color(0xFF1E293B),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  title: const Text(
-                    "Usage Access Required",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  content: const Text(
-                    "Kora Launcher requires 'Usage Access' permission to monitor which apps you open and for how long.\n\n"
-                    "This allows the Rising Tide system to intercept habit-building apps, measure your screen time accurately, and help you reduce distractions.\n\n"
-                    "Your usage data strictly stays on your device and is never sent to any servers.",
-                    style: TextStyle(color: Colors.white70, height: 1.4),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        "Cancel",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await NativeService.openUsageSettings();
-                      },
-                      child: const Text(
-                        "I Understand",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-            child: const Text(
-              "ENABLE",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildQuickAccessDock() {
     return Padding(
@@ -1033,6 +859,8 @@ import '../services/storage_service.dart';
 import '../services/app_lock_manager.dart';
 import '../services/foreground_intercept_guard.dart';
 import '../utils/limit_time_format.dart';
+import '../services/todo_service.dart';
+import '../database/kora_database.dart';
 
 class InterceptionScreen extends StatefulWidget {
   final AppInfo app;
@@ -1059,7 +887,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
 
   // Tasks state
   bool _showTasks = false;
-  List<String> _tasks = [];
+  List<Todo> _tasks = [];
 
   @override
   void initState() {
@@ -1097,7 +925,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
 
         // Stage 4 / Silence has no countdown and is always blocked
         if (_stage == RisingTideStage.silence) {
-          _tasks = StorageService.getTodayTasks();
+          _tasks = TodoService.todos.where((t) => !t.isCompleted).toList();
         } else {
           _startInitialCountdown();
         }
@@ -1475,7 +1303,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
                 padding: const EdgeInsets.only(bottom: 12.0),
                 child: InkWell(
                   onTap: () async {
-                    await StorageService.completeTask(task);
+                    await TodoService.toggleTodo(task.id);
                     await AppLockManager.grantUnlock(
                       widget.app.packageName,
                       minutes: 5,
@@ -1484,7 +1312,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
                       packageName: widget.app.packageName,
                       eventType: 'stage4_task_unlock',
                       stage: RisingTideStage.silence,
-                      detail: task,
+                      detail: task.title,
                     );
                     await _launchApp(afterInterceptionFlow: true);
                   },
@@ -1506,7 +1334,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
                         const SizedBox(width: 16),
                         Expanded(
                           child: Text(
-                            task,
+                            task.title,
                             style: const TextStyle(color: Colors.white),
                           ),
                         ),
@@ -2206,6 +2034,7 @@ import '../services/native_service.dart';
 import '../widgets/app_long_press_menu.dart';
 import 'interception_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
+import '../widgets/permission_banners.dart';
 
 class UsageDashboardScreen extends StatefulWidget {
   const UsageDashboardScreen({super.key});
@@ -2296,7 +2125,7 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (!_hasUsagePermission) _buildUsagePermissionBanner(),
+                  if (!_hasUsagePermission) UsagePermissionBanner(onEnabled: _loadDashBoardData),
                   _buildSummaryHeader(totalUsage),
                   const SizedBox(height: 16),
                   Padding(
@@ -2495,103 +2324,7 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
     );
   }
 
-  Widget _buildUsagePermissionBanner() {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.show_chart, size: 24, color: Colors.white),
-          const SizedBox(width: 16),
-          const Expanded(
-            child: Text(
-              "Enable usage stats for insights",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  backgroundColor: const Color(0xFF1E293B),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  title: const Text(
-                    "Usage Access Required",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  content: const Text(
-                    "Kora Launcher requires 'Usage Access' permission to monitor which apps you open and for how long.\n\n"
-                    "This allows the Rising Tide system to intercept habit-building apps, measure your screen time accurately, and help you reduce distractions.\n\n"
-                    "Your usage data strictly stays on your device and is never sent to any servers.",
-                    style: TextStyle(color: Colors.white70, height: 1.4),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                        "Cancel",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await NativeService.openUsageSettings();
-                        _loadDashBoardData();
-                      },
-                      child: const Text(
-                        "I Understand",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
-            child: const Text(
-              "ENABLE",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 }
 import 'package:installed_apps/app_info.dart';
 import 'package:installed_apps/installed_apps.dart';
@@ -3337,28 +3070,7 @@ class StorageService {
     await _prefs.setBool('has_completed_onboarding', true);
   }
 
-  // --- Task Mock Methods ---
-  static List<String> getTodayTasks() {
-    // Simulated tasks for now. Later can be tied to a database or intentional to-do list.
-    final tasks = _prefs.getStringList('mock_tasks');
-    if (tasks == null) {
-      final defaultTasks = [
-        "Drink a glass of water",
-        "Take 5 deep breaths",
-        "Stretch for 2 minutes",
-        "Jot down 1 thing you are grateful for"
-      ];
-      _prefs.setStringList('mock_tasks', defaultTasks);
-      return defaultTasks;
-    }
-    return tasks;
-  }
 
-  static Future<void> completeTask(String task) async {
-    final tasks = getTodayTasks();
-    tasks.remove(task);
-    await _prefs.setStringList('mock_tasks', tasks);
-  }
 }
 
 import '../database/database_provider.dart';
@@ -4837,6 +4549,114 @@ class _TodoListCardState extends State<TodoListCard> {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+import 'package:flutter/material.dart';
+import '../services/native_service.dart';
+
+class AccessibilityPermissionBanner extends StatelessWidget {
+  final VoidCallback? onEnabled;
+
+  const AccessibilityPermissionBanner({super.key, this.onEnabled});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.blueAccent.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.security, size: 24, color: Colors.white),
+          const SizedBox(width: 16),
+          const Expanded(
+            child: Text(
+              "Enable Rising Tide protection",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () async {
+              await NativeService.openAccessibilitySettings();
+              if (onEnabled != null) {
+                onEnabled!();
+              }
+            },
+            child: const Text(
+              "ENABLE",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class UsagePermissionBanner extends StatelessWidget {
+  final VoidCallback? onEnabled;
+
+  const UsagePermissionBanner({super.key, this.onEnabled});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.show_chart, size: 24, color: Colors.white),
+          const SizedBox(width: 16),
+          const Expanded(
+            child: Text(
+              "Enable usage stats for insights",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () async {
+              await NativeService.openUsageSettings();
+              if (onEnabled != null) {
+                onEnabled!();
+              }
+            },
+            child: const Text(
+              "ENABLE",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
     );
   }
