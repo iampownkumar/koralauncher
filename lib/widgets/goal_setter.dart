@@ -4,24 +4,24 @@ import '../services/storage_service.dart';
 import '../services/rising_tide_service.dart';
 import '../database/database_provider.dart';
 
-class IntentionSetter extends StatefulWidget {
-  final VoidCallback onIntentionSet;
+class GoalSetter extends StatefulWidget {
+  final VoidCallback onGoalSet;
   final VoidCallback? onDismiss;
-  final String? initialIntention;
+  final String? initialGoal;
 
-  const IntentionSetter({super.key, required this.onIntentionSet, this.onDismiss, this.initialIntention});
+  const GoalSetter({super.key, required this.onGoalSet, this.onDismiss, this.initialGoal});
 
   @override
-  State<IntentionSetter> createState() => _IntentionSetterState();
+  State<GoalSetter> createState() => _GoalSetterState();
 }
 
-class _IntentionSetterState extends State<IntentionSetter> {
+class _GoalSetterState extends State<GoalSetter> {
   late TextEditingController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.initialIntention);
+    _controller = TextEditingController(text: widget.initialGoal);
   }
 
   @override
@@ -32,10 +32,12 @@ class _IntentionSetterState extends State<IntentionSetter> {
 
   void _submit() async {
     if (_controller.text.trim().isNotEmpty) {
+      // Keep internal storage for fast retrieval
       await StorageService.setDailyIntention(_controller.text.trim());
+      // Save to Drift DB for pattern analysis
       await db.saveIntention(_controller.text.trim());
       RisingTideService.invalidateIntentionCache();
-      widget.onIntentionSet();
+      widget.onGoalSet();
     }
   }
 
@@ -62,8 +64,8 @@ class _IntentionSetterState extends State<IntentionSetter> {
               width: MediaQuery.of(context).size.width * 0.85,
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              color: const Color(0xFF0F172A).withValues(alpha: 0.8),
-              borderRadius: BorderRadius.circular(24),
+              color: const Color(0xFF0F172A).withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(28),
               border: Border.all(color: Colors.white10),
             ),
             child: Column(
@@ -72,50 +74,57 @@ class _IntentionSetterState extends State<IntentionSetter> {
               children: [
                 Text(
                   _getGreeting(),
-                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                    fontSize: 28,
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w300,
                     color: Colors.white,
+                    letterSpacing: 1.5,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 const Text(
-                  "What is your intention for today?",
-                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                  "What is your primary goal for today?",
+                  style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.4),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 TextField(
                   controller: _controller,
-                  autofocus: false,
+                  autofocus: true,
                   style: const TextStyle(color: Colors.white, fontSize: 18),
-                  decoration: const InputDecoration(
+                  textAlign: TextAlign.center,
+                  decoration: InputDecoration(
                     hintText: "e.g. Finish my project",
-                    hintStyle: TextStyle(color: Colors.white24),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.blueAccent),
-                    ),
+                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2)),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                   onSubmitted: (_) => _submit(),
                 ),
-                const SizedBox(height: 24),
+                const Divider(color: Colors.white24, height: 32),
+                const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    elevation: 0,
                   ),
-                  child: const Text("Set Intention", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                  child: const Text("Set Goal", style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 ),
                 if (widget.onDismiss != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   TextButton(
                     onPressed: widget.onDismiss,
-                    child: const Text("Skip for now", style: TextStyle(color: Colors.white60)),
+                    child: Text(
+                      "Skip for now", 
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 13),
+                    ),
                   ),
                 ],
               ],

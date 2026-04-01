@@ -15,16 +15,41 @@ class TidePoolScreen extends StatefulWidget {
 }
 
 class _TidePoolScreenState extends State<TidePoolScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final flagged = StorageService.getFlaggedApps();
-    final apps = LauncherService.cachedApps;
-    AppInfo? findApp(String pkg) {
-      try {
-        return apps.firstWhere((a) => a.packageName == pkg);
-      } catch (_) {
-        return null;
-      }
+    final allApps = LauncherService.cachedApps
+        .where((app) => !app.packageName.contains('koralauncher'))
+        .toList();
+
+    List<AppInfo> displayApps;
+    if (_searchQuery.isEmpty) {
+      displayApps = allApps.where((a) => flagged.contains(a.packageName)).toList();
+    } else {
+      displayApps = allApps
+          .where((app) => app.name.toLowerCase().contains(_searchQuery))
+          .toList();
     }
 
     return GestureDetector(
@@ -34,6 +59,15 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
         }
       },
       child: Scaffold(
+        floatingActionButton: _searchQuery.isEmpty ? FloatingActionButton.extended(
+          onPressed: () {
+            FocusScope.of(context).requestFocus(_searchFocusNode);
+          },
+          label: const Text('Add App to Flag', style: TextStyle(fontWeight: FontWeight.bold)),
+          icon: const Icon(Icons.add),
+          backgroundColor: Colors.cyan.withValues(alpha: 0.8),
+          foregroundColor: Colors.black,
+        ) : null,
         body: Container(
           width: double.infinity,
           height: double.infinity,
@@ -43,10 +77,12 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
               end: Alignment.bottomRight,
               colors: [
                 Color(0xFF020617),
-                Color(0xFF0C4A6E),
+                Color(0xFF0F172A),
+                Color(0xFF1E293B),
+                Color(0xFF0F172A),
                 Color(0xFF020617),
               ],
-              stops: [0.0, 0.45, 1.0],
+              stops: [0.0, 0.3, 0.5, 0.7, 1.0],
             ),
           ),
           child: SafeArea(
@@ -90,6 +126,27 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                     ),
                   ),
                 ),
+                // Search Field
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  child: TextField(
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Search any app to flag...',
+                      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+                      prefixIcon: const Icon(Icons.search, color: Colors.white38),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.05),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 8),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -102,13 +159,13 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.waves, color: Theme.of(context).primaryColor, size: 28),
+                        const Icon(Icons.waves, color: Colors.cyanAccent, size: 28),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
+                              const Text(
                                 'Rising Tide',
                                 style: TextStyle(
                                   color: Colors.white,
@@ -130,9 +187,8 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                         ),
                         Switch(
                           value: StorageService.isRisingTideMasterEnabled(),
-                          activeThumbColor: Theme.of(context).primaryColor,
-                          activeTrackColor:
-                              Theme.of(context).primaryColor.withValues(alpha: 0.45),
+                          activeThumbColor: Colors.cyanAccent,
+                          activeTrackColor: Colors.cyan.withValues(alpha: 0.45),
                           onChanged: (v) async {
                             await StorageService.setRisingTideMasterEnabled(v);
                             if (mounted) setState(() {});
@@ -146,7 +202,7 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Text(
-                    'FLAGGED APPS',
+                    _searchQuery.isEmpty ? 'FLAGGED APPS' : 'SEARCH RESULTS',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.4),
                       letterSpacing: 3,
@@ -157,10 +213,12 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                 ),
                 const SizedBox(height: 8),
                 Expanded(
-                  child: flagged.isEmpty
+                  child: displayApps.isEmpty
                       ? Center(
                           child: Text(
-                            'No apps flagged yet.\nSwipe up on the home screen → long-press an app → turn on Rising Tide,\nor tap the wave icon on a row.',
+                            _searchQuery.isEmpty
+                                ? 'No apps flagged yet.\nSearch above to find an app to flag,\nor long-press an app in the drawer.'
+                                : 'No apps found matching "$_searchQuery"',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.45),
@@ -170,32 +228,46 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                         )
                       : ListView.builder(
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                          itemCount: flagged.length,
+                          itemCount: displayApps.length,
                           itemBuilder: (context, i) {
-                            final pkg = flagged[i];
-                            final app = findApp(pkg);
-                            final label = app?.name ?? pkg;
+                            final app = displayApps[i];
+                            final pkg = app.packageName;
+                            final isFlagged = StorageService.isAppFlagged(pkg);
                             final limit = StorageService.getAppDailyLimitMinutes(pkg);
                             return Card(
-                              color: Colors.white.withValues(alpha: 0.06),
+                              color: isFlagged 
+                                  ? Colors.cyan.withValues(alpha: 0.08)
+                                  : Colors.white.withValues(alpha: 0.04),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
-                                side: const BorderSide(color: Colors.white10),
+                                side: BorderSide(
+                                  color: isFlagged ? Colors.cyan.withValues(alpha: 0.3) : Colors.white10,
+                                ),
                               ),
                               child: ListTile(
+                                leading: isFlagged 
+                                    ? const Icon(Icons.waves, color: Colors.cyanAccent, size: 20)
+                                    : const Icon(Icons.waves, color: Colors.white24, size: 20),
                                 title: Text(
-                                  label,
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                                  app.name,
+                                  style: TextStyle(
+                                    color: isFlagged ? Colors.white : Colors.white70,
+                                    fontWeight: isFlagged ? FontWeight.w600 : FontWeight.w400,
+                                  ),
                                 ),
-                                subtitle: Text(
-                                  'Limit ${LimitTimeFormat.dualLabel(limit)}',
-                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.45)),
-                                ),
-                                trailing: IconButton(
-                                  icon: const Icon(Icons.tune, color: Colors.white54),
-                                  onPressed: app == null
-                                      ? null
-                                      : () {
+                                subtitle: isFlagged
+                                    ? Text(
+                                        'Limit ${LimitTimeFormat.dualLabel(limit)}',
+                                        style: TextStyle(color: Colors.white.withValues(alpha: 0.45)),
+                                      )
+                                    : Text(
+                                        'Not flagged',
+                                        style: TextStyle(color: Colors.white.withValues(alpha: 0.25)),
+                                      ),
+                                trailing: isFlagged
+                                    ? IconButton(
+                                        icon: const Icon(Icons.tune, color: Colors.white54),
+                                        onPressed: () {
                                           showModalBottomSheet<void>(
                                             context: context,
                                             isScrollControlled: true,
@@ -207,16 +279,21 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                                             ),
                                           );
                                         },
-                                ),
-                                onTap: app == null
-                                    ? null
-                                    : () {
-                                        showAppLongPressMenu(
-                                          context,
-                                          app,
-                                          onChanged: () => setState(() {}),
-                                        );
-                                      },
+                                      )
+                                    : IconButton(
+                                        icon: const Icon(Icons.add_circle_outline, color: Colors.white38),
+                                        onPressed: () async {
+                                          await StorageService.toggleFlaggedApp(pkg);
+                                          if (mounted) setState(() {});
+                                        },
+                                      ),
+                                onTap: () {
+                                  showAppLongPressMenu(
+                                    context,
+                                    app,
+                                    onChanged: () => setState(() {}),
+                                  );
+                                },
                               ),
                             );
                           },

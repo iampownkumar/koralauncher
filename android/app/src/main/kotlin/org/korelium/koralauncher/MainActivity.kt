@@ -70,6 +70,22 @@ class MainActivity: FlutterActivity() {
                 }
             }
         }
+
+        // ─────────────────────────────────────────────
+        // PACKAGE BROADCAST RECEIVER
+        // Notifies Flutter when apps are installed/uninstalled.
+        // ─────────────────────────────────────────────
+        val packageFilter = android.content.IntentFilter().apply {
+            addAction(android.content.Intent.ACTION_PACKAGE_ADDED)
+            addAction(android.content.Intent.ACTION_PACKAGE_REMOVED)
+            addAction(android.content.Intent.ACTION_PACKAGE_REPLACED)
+            addDataScheme("package")
+        }
+        registerReceiver(object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+                methodChannel?.invokeMethod("onPackageChanged", null)
+            }
+        }, packageFilter)
     }
 
     private fun getRawUsageStats(startTime: Long, endTime: Long): Map<String, Long> {

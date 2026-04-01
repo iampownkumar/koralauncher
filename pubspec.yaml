@@ -13,6 +13,7 @@ dependencies:
   # ── UI & FONTS ───────────────────────────────────────────
   cupertino_icons: ^1.0.8
   google_fonts: ^8.0.2
+  intl: ^0.19.0
 
   # ── STORAGE ──────────────────────────────────────────────
   shared_preferences: ^2.5.4   # flags, minimal mode, fast UI reads

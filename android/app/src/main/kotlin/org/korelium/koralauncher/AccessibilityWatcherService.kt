@@ -24,6 +24,12 @@ class AccessibilityWatcherService : AccessibilityService() {
         if (packageName == applicationContext.packageName) return
         if (!blockedApps.contains(packageName)) return
 
+        // FIX: Detect if device is locked. 
+        // If locked, we MUST NOT bring our activity to front or invoke interception,
+        // because it would bypass the secure lock screen when a user interacts with a notification.
+        val km = getSystemService(android.content.Context.KEYGUARD_SERVICE) as android.app.KeyguardManager
+        if (km.isKeyguardLocked) return
+
         // Bring Kora to foreground so Flutter can show [InterceptionScreen].
         val launch = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or

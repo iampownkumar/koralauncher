@@ -3,13 +3,17 @@ import '../services/storage_service.dart';
 import '../services/launcher_service.dart';
 import '../services/usage_service.dart';
 import '../services/native_service.dart';
+import '../services/todo_service.dart';
 import 'app_drawer_screen.dart';
-import '../widgets/intention_setter.dart';
+import '../widgets/goal_setter.dart';
+import '../widgets/todo_list_card.dart';
+import 'todo_screen.dart';
 import 'usage_dashboard_screen.dart';
 import 'tide_pool_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
 import 'package:upgrader/upgrader.dart';
+import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,16 +23,18 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  bool _showIntentionSetter = false;
+  bool _showGoalSetter = false;
   bool _isDefaultLauncher = true;
   bool _hasUsagePermission = true;
-  String? _intention;
+  String? _goal;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _checkNativeState();
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) _checkNativeState();
+    });
     _loadInitialData();
   }
 
@@ -41,7 +47,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
-      // Clear focus when screen is locked or app goes to background
       FocusManager.instance.primaryFocus?.unfocus();
     } else if (state == AppLifecycleState.resumed) {
       if (mounted && Navigator.canPop(context)) {
@@ -51,7 +56,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       UsageService.refreshUsage().then((_) {
         if (mounted) setState(() {});
       });
-      _checkIntention();
+      _checkGoal();
+      _refreshTodos();
     }
   }
 
@@ -69,13 +75,31 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _loadInitialData() async {
     await LauncherService.refreshApps();
     await UsageService.refreshUsage();
-    _checkIntention();
+    await TodoService.init();
+    _checkGoal();
+    _checkMorningGoalTrigger();
     if (mounted) setState(() {});
   }
 
-  void _checkIntention() {
-    _intention = StorageService.getDailyIntention();
+  void _refreshTodos() async {
+    await TodoService.refreshTodos();
     if (mounted) setState(() {});
+  }
+
+  void _checkGoal() {
+    _goal = StorageService.getDailyIntention();
+    if (mounted) setState(() {});
+  }
+
+  void _checkMorningGoalTrigger() {
+    final now = DateTime.now();
+    if (now.hour >= 5 && now.hour < 10) {
+      if (_goal == null || _goal!.isEmpty) {
+        setState(() {
+          _showGoalSetter = true;
+        });
+      }
+    }
   }
 
   void _openAppDrawer() {
@@ -99,39 +123,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         transitionDuration: const Duration(milliseconds: 300),
       ),
     ).then((_) {
-      // Refresh on return in case settings/usage changed
       _checkNativeState();
       UsageService.refreshUsage().then((_) {
         if (mounted) setState(() {});
       });
-      _checkIntention();
+      _checkGoal();
+      _refreshTodos();
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false, // Prevent back button from exiting the launcher
+      canPop: false,
       child: Scaffold(
         resizeToAvoidBottomInset: true,
-        backgroundColor:
-            Colors.black, // Solid black to fix recents wallpaper glitch
+        backgroundColor: Colors.black,
         body: Stack(
           children: [
-            // Gesture Layer that spans the whole screen
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
-                // Save and close keyboard when tapping anywhere outside
                 FocusManager.instance.primaryFocus?.unfocus();
               },
-              // onDoubleTap: () {
-              //   NativeService.lockScreen();
-              // },
               onVerticalDragEnd: (details) {
                 if (details.primaryVelocity != null &&
                     details.primaryVelocity! < -300) {
-                  // Strong Swipe UP
                   _openAppDrawer();
                 }
               },
@@ -139,7 +156,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 final velocity = details.primaryVelocity;
                 if (velocity != null) {
                   if (velocity > 300) {
-                    // Swipe right → Usage dashboard
                     Navigator.push(
                       context,
                       PageRouteBuilder(
@@ -155,7 +171,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                     );
                   } else if (velocity < -300) {
-                    // Swipe left → Tide pool (reflection + flagged list)
                     Navigator.push(
                       context,
                       PageRouteBuilder(
@@ -164,21 +179,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         transitionDuration: const Duration(milliseconds: 340),
                         transitionsBuilder:
                             (context, animation, secondaryAnimation, child) {
-                          return SlideTransition(
-                            position: Tween<Offset>(
-                              begin: const Offset(1, 0),
-                              end: Offset.zero,
-                            ).animate(
-                              CurvedAnimation(
-                                parent: animation,
-                                curve: Curves.easeOutCubic,
-                              ),
-                            ),
-                            child: child,
-                          );
-                        },
+                              return SlideTransition(
+                                position:
+                                    Tween<Offset>(
+                                      begin: const Offset(1, 0),
+                                      end: Offset.zero,
+                                    ).animate(
+                                      CurvedAnimation(
+                                        parent: animation,
+                                        curve: Curves.easeOutCubic,
+                                      ),
+                                    ),
+                                child: child,
+                              );
+                            },
                       ),
-                    );
+                    ).then((_) => setState(() {}));
                   }
                 }
               },
@@ -188,52 +204,43 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 child: SafeArea(
                   child: SingleChildScrollView(
                     child: SizedBox(
-                      height: MediaQuery.of(context).size.height - 
-                             MediaQuery.of(context).padding.top - 
-                             MediaQuery.of(context).padding.bottom,
+                      height:
+                          MediaQuery.of(context).size.height -
+                          MediaQuery.of(context).padding.top -
+                          MediaQuery.of(context).padding.bottom,
                       child: Column(
                         children: [
-                          if (!_isDefaultLauncher) _buildDefaultLauncherBanner(),
-                          if (!_hasUsagePermission) _buildUsagePermissionBanner(),
+                          if (!_isDefaultLauncher)
+                            _buildDefaultLauncherBanner(),
+                          if (!_hasUsagePermission)
+                            _buildUsagePermissionBanner(),
                           _buildTopInfoBar(),
-    
-                          if (!_showIntentionSetter) ...[
-                            _buildRisingTideMaster(),
-                            const SizedBox(height: 12),
-                            _buildIntentionHeader(),
+
+                          // _buildGoalHeader() replaced by chip in top bar
+                          const SizedBox(height: 16),
+
+                          if (!_showGoalSetter) ...[
+                            TodoListCard(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (c) => const TodoScreen(),
+                                  ),
+                                ).then((_) => setState(() {}));
+                              },
+                            ),
                           ],
-    
+
                           const Spacer(),
-    
-                          // Essential Shortcuts Dock
+
+                          _buildTimeAndDate(),
+                          const SizedBox(height: 24),
+
                           _buildQuickAccessDock(),
                           const SizedBox(height: 16),
-    
-                          // Swipe up Hint
-                          GestureDetector(
-                            onTap: _openAppDrawer,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.keyboard_arrow_up,
-                                  color: Colors.white60,
-                                  size: 28,
-                                ),
-                                Text(
-                                  "Swipe up · search  ·  left for Tide pool  ·  right for usage",
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.5),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w500,
-                                    height: 1.35,
-                                  ),
-                                ),
-                                // const SizedBox(height: 24), // Tighter gap for better grounded layout
-                              ],
-                            ),
-                          ),
+
+                          _buildSwipeHint(),
                         ],
                       ),
                     ),
@@ -242,28 +249,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
 
-            // Overlays
-            if (_showIntentionSetter)
-              IntentionSetter(
-                initialIntention: _intention,
+            if (_showGoalSetter)
+              GoalSetter(
+                initialGoal: _goal,
                 onDismiss: () {
                   setState(() {
-                    _showIntentionSetter = false;
+                    _showGoalSetter = false;
                   });
                 },
-                onIntentionSet: () {
+                onGoalSet: () {
                   setState(() {
-                    _showIntentionSetter = false;
-                    _intention = StorageService.getDailyIntention();
+                    _showGoalSetter = false;
+                    _goal = StorageService.getDailyIntention();
                   });
                 },
               ),
-            // Update Alert overlay
             UpgradeAlert(
               showIgnore: false,
               showLater: true,
               dialogStyle: UpgradeDialogStyle.material,
-              child: SizedBox.shrink(),
+              child: const SizedBox.shrink(),
             ),
           ],
         ),
@@ -271,113 +276,99 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildTopInfoBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [if (_hasUsagePermission) _buildUsageStats()],
-      ),
-    );
-  }
-
-  Widget _buildRisingTideMaster() {
-    final on = StorageService.isRisingTideMasterEnabled();
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              const Color(0xFF0E7490).withValues(alpha: 0.35),
-              const Color(0xFF1E3A5F).withValues(alpha: 0.5),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: on ? Colors.cyan.withValues(alpha: 0.55) : Colors.white24,
-            width: on ? 1.5 : 1,
-          ),
-          boxShadow: on
-              ? [
-                  BoxShadow(
-                    color: Colors.cyan.withValues(alpha: 0.12),
-                    blurRadius: 20,
-                    spreadRadius: 0,
-                  ),
-                ]
-              : null,
-        ),
-        child: SwitchListTile(
-          value: on,
-          secondary: Icon(
-            Icons.waves,
-            color: on ? Colors.cyanAccent : Colors.white38,
-            size: 30,
-          ),
-          title: const Text(
-            'Rising Tide',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 17,
-            ),
-          ),
-          subtitle: Text(
-            on
-                ? 'On — asks on flagged apps before they open'
-                : 'Off — no gates (same as Tide pool switch)',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.58),
-              fontSize: 12.5,
-              height: 1.3,
-            ),
-          ),
-          activeThumbColor: Colors.cyanAccent,
-          activeTrackColor: Colors.cyan.withValues(alpha: 0.45),
-          inactiveThumbColor: Colors.white54,
-          inactiveTrackColor: Colors.white12,
-          onChanged: (v) async {
-            await StorageService.setRisingTideMasterEnabled(v);
-            if (mounted) setState(() {});
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildIntentionHeader() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _showIntentionSetter = true;
-          });
-        },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+  Widget _buildTimeAndDate() {
+    return StreamBuilder(
+      stream: Stream.periodic(const Duration(seconds: 1)),
+      builder: (context, snapshot) {
+        final now = DateTime.now();
+        return Column(
           children: [
             Text(
-              "TODAY (OPTIONAL)",
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
+              DateFormat('HH:mm:ss').format(now),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 52,
+                fontWeight: FontWeight.w200,
                 letterSpacing: 2,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-                shadows: const [Shadow(blurRadius: 10, color: Colors.black54)],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Text(
-              _intention ?? "Tap to add an intention",
-              style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                fontSize: _intention != null ? 36 : 24,
-                height: 1.2,
-                color: _intention != null ? Colors.white : Colors.white38,
-                fontWeight: FontWeight.w300,
-                shadows: const [Shadow(blurRadius: 10, color: Colors.black54)],
+              DateFormat('EEEE, MMMM d, yyyy').format(now).toUpperCase(),
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 10,
+                letterSpacing: 3,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildSwipeHint() {
+    return GestureDetector(
+      onTap: _openAppDrawer,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.keyboard_arrow_up, color: Colors.white60, size: 28),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopInfoBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: _buildGoalChip(),
+            ),
+          ),
+          const SizedBox(width: 16),
+          if (_hasUsagePermission) _buildUsageStats(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGoalChip() {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _showGoalSetter = true;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.flag, size: 16, color: Colors.white),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                _goal != null && _goal!.isNotEmpty ? _goal! : "Set Goal",
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],

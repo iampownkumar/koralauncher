@@ -83,14 +83,27 @@ class TideEvents extends Table {
 }
 
 // ─────────────────────────────────────────────
+// TABLE 6: TODOS
+// Powers: daily task list, linked to goals
+// ─────────────────────────────────────────────
+class Todos extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get title => text()();
+  BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get completedAt => dateTime().nullable()();
+  IntColumn get priority => integer().withDefault(const Constant(0))(); // 0=none, 1=low, 2=med, 3=high
+}
+
+// ─────────────────────────────────────────────
 // DATABASE CLASS
 // ─────────────────────────────────────────────
-@DriftDatabase(tables: [Sessions, Moods, Decisions, Intentions, TideEvents])
+@DriftDatabase(tables: [Sessions, Moods, Decisions, Intentions, TideEvents, Todos])
 class KoraDatabase extends _$KoraDatabase {
   KoraDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   // ── SESSION QUERIES ──────────────────────
 
@@ -237,6 +250,40 @@ class KoraDatabase extends _$KoraDatabase {
             ..orderBy([(t) => OrderingTerm.desc(t.timestamp)])
             ..limit(limit))
           .get();
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onUpgrade: (m, from, to) async {
+          if (from == 1) {
+            await m.createTable(todos);
+          }
+        },
+      );
+
+  // ── TODO QUERIES ─────────────────────────
+
+  Future<List<Todo>> getTodos() =>
+      (select(todos)..orderBy([(t) => OrderingTerm.desc(t.createdAt)])).get();
+
+  Future<int> addTodo(String title, {int priority = 0}) =>
+      into(todos).insert(TodosCompanion.insert(
+        title: title,
+        createdAt: DateTime.now(),
+        priority: Value(priority),
+      ));
+
+  Future<void> toggleTodo(int id) async {
+    final todo = await (select(todos)..where((t) => t.id.equals(id))).getSingle();
+    await (update(todos)..where((t) => t.id.equals(id))).write(
+      TodosCompanion(
+        isCompleted: Value(!todo.isCompleted),
+        completedAt: Value(!todo.isCompleted ? DateTime.now() : null),
+      ),
+    );
+  }
+
+  Future<void> deleteTodo(int id) =>
+      (delete(todos)..where((t) => t.id.equals(id))).go();
 
   Future<Intention?> getTodayIntention() async {
     final today = DateTime.now();

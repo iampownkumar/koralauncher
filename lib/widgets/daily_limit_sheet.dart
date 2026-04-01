@@ -22,38 +22,33 @@ class DailyLimitSheet extends StatefulWidget {
 }
 
 class _DailyLimitSheetState extends State<DailyLimitSheet> {
-  late double _limitMinutes;
+  late TextEditingController _limitController;
+  int _currentLimit = 5;
 
   @override
   void initState() {
     super.initState();
-    _limitMinutes = widget.initialLimitMinutes.toDouble().clamp(5, 1440);
+    _currentLimit = widget.initialLimitMinutes.clamp(1, 1440);
+    _limitController = TextEditingController(text: _currentLimit.toString());
+    
+    _limitController.addListener(() {
+      final val = int.tryParse(_limitController.text);
+      if (val != null && val != _currentLimit) {
+        setState(() {
+          _currentLimit = val.clamp(1, 1440);
+        });
+      }
+    });
   }
 
-  Color _thumbColor() {
-    final m = _limitMinutes.round();
-    if (LimitTimeFormat.needsHighLimitConfirm(m)) {
-      return Colors.deepOrange.shade400;
-    }
-    if (LimitTimeFormat.showsSoftLimitWarning(m)) {
-      return Colors.amber.shade400;
-    }
-    return Colors.white;
-  }
-
-  Color _trackColor() {
-    final m = _limitMinutes.round();
-    if (LimitTimeFormat.needsHighLimitConfirm(m)) {
-      return Colors.deepOrange.withValues(alpha: 0.45);
-    }
-    if (LimitTimeFormat.showsSoftLimitWarning(m)) {
-      return Colors.amber.withValues(alpha: 0.35);
-    }
-    return Colors.white24;
+  @override
+  void dispose() {
+    _limitController.dispose();
+    super.dispose();
   }
 
   Future<void> _save() async {
-    final m = _limitMinutes.round();
+    final m = _currentLimit;
     if (LimitTimeFormat.needsHighLimitConfirm(m)) {
       final ok = await showHighLimitConfirmDialog(context, m);
       if (!ok || !mounted) return;
@@ -66,7 +61,7 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    final m = _limitMinutes.round();
+    final m = _currentLimit;
     final soft = LimitTimeFormat.showsSoftLimitWarning(m);
     final hard = LimitTimeFormat.needsHighLimitConfirm(m);
 
@@ -156,29 +151,42 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
                     ),
                   ),
                 ],
-                const SizedBox(height: 16),
+                // Time Display Section
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Expanded(
-                      child: SliderTheme(
-                        data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: _trackColor(),
-                          inactiveTrackColor: Colors.white12,
-                          thumbColor: _thumbColor(),
-                          overlayColor: _thumbColor().withValues(alpha: 0.25),
+                    IntrinsicWidth(
+                      child: TextField(
+                        controller: _limitController,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 48,
+                          fontWeight: FontWeight.w900,
+                          color: hard ? Colors.deepOrange.shade300 : soft ? Colors.amber.shade300 : Colors.white,
+                          letterSpacing: -1,
                         ),
-                        child: Slider(
-                          min: 5,
-                          max: 1440,
-                          divisions: 287,
-                          value: _limitMinutes.clamp(5, 1440),
-                          label: LimitTimeFormat.compact(m),
-                          onChanged: (v) => setState(() => _limitMinutes = v),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
                         ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'mins',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withValues(alpha: 0.3),
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
                 Text(
                   'Rising Tide uses 50% / 100% / 200% of this limit for stages.',
                   style: TextStyle(

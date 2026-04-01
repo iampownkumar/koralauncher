@@ -80,10 +80,12 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
           ),
         ).then((_) {
           _searchController.clear();
+          if (mounted) Navigator.pop(context);
         });
       } else {
         LauncherService.launchApp(app.packageName).then((_) {
           _searchController.clear();
+          if (mounted) Navigator.pop(context);
         });
       }
     }
@@ -104,53 +106,67 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onVerticalDragEnd: (details) {
-        // Swipe down to go back to home screen
-        if (details.primaryVelocity! > 0) {
-          Navigator.pop(context);
+    return PopScope(
+      onPopInvoked: (didPop) {
+        if (didPop) {
+          _searchFocusNode.unfocus();
         }
       },
-      child: Scaffold(
-        backgroundColor:
-            Colors.black, // Solid dark background to fix recents glitch
-        body: Stack(
-          children: [
-            // Dark Blur Background for premium feel over the list items as they scroll
-            BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-              child: Container(
-                color: Theme.of(
-                  context,
-                ).scaffoldBackgroundColor.withValues(alpha: 0.85),
-                width: double.infinity,
-                height: double.infinity,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _searchFocusNode.unfocus(),
+        onVerticalDragEnd: (details) {
+          // Swipe down to go back to home screen
+          if (details.primaryVelocity! > 0) {
+            _searchFocusNode.unfocus();
+            Navigator.pop(context);
+          }
+        },
+        child: Scaffold(
+          resizeToAvoidBottomInset: false, // Prevent layout jumps
+          backgroundColor:
+              Colors.black, // Solid dark background to fix recents glitch
+          body: Stack(
+            children: [
+              // Dark Blur Background
+              BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: Container(
+                  color: Theme.of(
+                    context,
+                  ).scaffoldBackgroundColor.withValues(alpha: 0.85),
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
               ),
-            ),
-            SafeArea(
-              child: Column(
-                children: [
-                  const SizedBox(height: 16),
-                  _buildSearchField(),
-                  Expanded(
-                    child: NotificationListener<ScrollNotification>(
-                      onNotification: (notification) {
-                        // Detect when user is at the top AND pulls down (overscroll)
-                        if (notification is ScrollUpdateNotification) {
-                          if (notification.metrics.pixels <= -60) {
-                            Navigator.maybePop(context);
-                            return true;
+              SafeArea(
+                child: Column(
+                  children: [
+                    const SizedBox(height: 16),
+                    _buildSearchField(),
+                    Expanded(
+                      child: NotificationListener<ScrollNotification>(
+                        onNotification: (notification) {
+                          // Detect when user is at the top AND pulls down (overscroll)
+                          if (notification is ScrollUpdateNotification) {
+                            if (notification.metrics.pixels <= -60) {
+                              _searchFocusNode.unfocus();
+                              Navigator.maybePop(context);
+                              return true;
+                            }
                           }
-                        }
-                        return false;
-                      },
-                      child: _buildAppList(),
+                          return false;
+                        },
+                        child: _buildAppList(),
+                      ),
                     ),
-                  ),
-                ],
+                    // Space for keyboard when resizeToAvoidBottomInset is false
+                    Padding(padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom)),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -168,6 +184,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
             final app = _filteredApps.first;
             LauncherService.launchApp(app.packageName).then((_) {
               _searchController.clear();
+              if (mounted) Navigator.pop(context);
             });
           }
         },
@@ -223,10 +240,12 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
                 ),
               ).then((_) {
                 _searchController.clear();
+                if (mounted) Navigator.pop(context);
               });
             } else {
               LauncherService.launchApp(app.packageName).then((_) {
                 _searchController.clear();
+                if (mounted) Navigator.pop(context);
               });
             }
           },

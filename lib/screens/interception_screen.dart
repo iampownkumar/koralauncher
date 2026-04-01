@@ -127,11 +127,11 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color(0xFF0F172A),
       body: Stack(
         children: [
-          // Background - Semi-transparent app icon or just black
-          Positioned.fill(child: Container(color: Colors.black)),
+          // Background - Semi-transparent app icon or just slate
+          Positioned.fill(child: Container(color: const Color(0xFF0F172A))),
 
           // Glassmorphic Layer
           Positioned.fill(
@@ -146,10 +146,10 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.black.withValues(
+                      const Color(0xFF1E293B).withValues(
                         alpha: _getOverlayOpacity() * 0.7,
                       ),
-                      Colors.black.withValues(alpha: _getOverlayOpacity()),
+                      const Color(0xFF0F172A).withValues(alpha: _getOverlayOpacity()),
                     ],
                   ),
                 ),
@@ -473,8 +473,8 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
-                      border: Border.all(color: Colors.white10),
+                      color: Colors.white.withValues(alpha: 0.1),
+                      border: Border.all(color: Colors.white12),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
@@ -580,10 +580,10 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
             decoration: BoxDecoration(
               color: isSelected
                   ? Colors.white
-                  : Colors.white.withValues(alpha: 0.05),
+                  : Colors.white.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(30),
               border: Border.all(
-                color: isSelected ? Colors.white : Colors.white10,
+                color: isSelected ? Colors.white : Colors.white12,
                 width: 1,
               ),
             ),
@@ -667,6 +667,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
                   );
                   await RisingTideService.setReopenLock(widget.app.packageName);
                   await _launchApp(afterInterceptionFlow: true);
+                  if (mounted) Navigator.pop(context);
                 },
           isPrimary: false,
           isDisabled: disabled,

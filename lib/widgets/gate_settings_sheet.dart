@@ -24,48 +24,38 @@ class GateSettingsSheet extends StatefulWidget {
 }
 
 class _GateSettingsSheetState extends State<GateSettingsSheet> {
-  late double _limitMinutes;
+  late TextEditingController _limitController;
   late TextEditingController _intentionController;
+  int _currentLimit = 5;
 
   @override
   void initState() {
     super.initState();
-    _limitMinutes = widget.initialLimitMinutes.toDouble().clamp(5, 1440);
+    _currentLimit = widget.initialLimitMinutes.clamp(1, 1440);
+    _limitController = TextEditingController(text: _currentLimit.toString());
     _intentionController = TextEditingController(text: widget.initialIntention ?? '');
+    
+    _limitController.addListener(() {
+      final val = int.tryParse(_limitController.text);
+      if (val != null && val != _currentLimit) {
+        setState(() {
+          _currentLimit = val.clamp(1, 1440);
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _limitController.dispose();
     _intentionController.dispose();
     super.dispose();
-  }
-
-  Color _thumbColor(double limit) {
-    final m = limit.round();
-    if (LimitTimeFormat.needsHighLimitConfirm(m)) {
-      return Colors.deepOrange.shade400;
-    }
-    if (LimitTimeFormat.showsSoftLimitWarning(m)) {
-      return Colors.amber.shade400;
-    }
-    return Colors.white;
-  }
-
-  Color _trackColor(double limit) {
-    final m = limit.round();
-    if (LimitTimeFormat.needsHighLimitConfirm(m)) {
-      return Colors.deepOrange.withValues(alpha: 0.45);
-    }
-    if (LimitTimeFormat.showsSoftLimitWarning(m)) {
-      return Colors.amber.withValues(alpha: 0.35);
-    }
-    return Colors.white24;
   }
 
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
-    final m = _limitMinutes.round();
+    final m = _currentLimit;
     final soft = LimitTimeFormat.showsSoftLimitWarning(m);
     final hard = LimitTimeFormat.needsHighLimitConfirm(m);
 
@@ -74,20 +64,20 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
       child: Container(
         decoration: const BoxDecoration(
           color: Color(0xFF0F172A),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           border: Border(top: BorderSide(color: Colors.white10)),
         ),
         child: SafeArea(
           top: false,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+            padding: const EdgeInsets.fromLTRB(28, 16, 28, 28),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Center(
                   child: Container(
-                    width: 40,
+                    width: 42,
                     height: 4,
                     decoration: BoxDecoration(
                       color: Colors.white24,
@@ -95,141 +85,146 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 Text(
                   widget.appLabel,
                   style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
                     color: Colors.white,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
-                  'Daily limit · optional note',
+                  'Set your daily boundary',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 14,
                     color: Colors.white.withValues(alpha: 0.45),
-                    letterSpacing: 0.5,
+                    letterSpacing: 0.2,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 32),
+                
+                // Time Display Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    IntrinsicWidth(
+                      child: TextField(
+                        controller: _limitController,
+                        keyboardType: TextInputType.number,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 48,
+                          fontWeight: FontWeight.w900,
+                          color: hard ? Colors.deepOrange.shade300 : soft ? Colors.amber.shade300 : Colors.white,
+                          letterSpacing: -1,
+                        ),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'mins',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withValues(alpha: 0.3),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 Text(
                   LimitTimeFormat.dualLabel(m),
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: hard
-                        ? Colors.deepOrange.shade200
-                        : soft
-                            ? Colors.amber.shade200
-                            : Colors.white,
+                    fontSize: 13,
+                    color: Colors.white.withValues(alpha: 0.4),
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
+                
                 if (soft) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 20),
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: hard
-                          ? Colors.deepOrange.withValues(alpha: 0.15)
-                          : Colors.amber.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
+                          ? Colors.deepOrange.withValues(alpha: 0.1)
+                          : Colors.amber.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: hard
-                            ? Colors.deepOrange.withValues(alpha: 0.45)
-                            : Colors.amber.withValues(alpha: 0.4),
+                            ? Colors.deepOrange.withValues(alpha: 0.3)
+                            : Colors.amber.withValues(alpha: 0.2),
                       ),
                     ),
-                    child: Text(
-                      hard
-                          ? 'More than 4 hours: you will confirm before saving.'
-                          : '4h+ is a large part of your day — set this only if it is intentional.',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.88),
-                        height: 1.4,
-                        fontSize: 13,
-                      ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: hard ? Colors.deepOrange.shade300 : Colors.amber.shade300,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            hard
+                                ? 'Very high limit. You will need to confirm twice.'
+                                : 'High usage detected. This is a large part of your day.',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.75),
+                              fontSize: 12.5,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-                const SizedBox(height: 16),
+                
+                const SizedBox(height: 32),
                 Text(
-                  'Daily time limit',
+                  'NOTATION (OPTIONAL)',
                   style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withValues(alpha: 0.5),
-                    letterSpacing: 1.2,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white.withValues(alpha: 0.3),
+                    letterSpacing: 2.0,
                   ),
                 ),
-                const SizedBox(height: 8),
-                SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: _trackColor(_limitMinutes),
-                    inactiveTrackColor: Colors.white12,
-                    thumbColor: _thumbColor(_limitMinutes),
-                    overlayColor: _thumbColor(_limitMinutes).withValues(alpha: 0.25),
-                  ),
-                  child: Slider(
-                    min: 5,
-                    max: 1440,
-                    divisions: 287,
-                    value: _limitMinutes.clamp(5, 1440),
-                    label: LimitTimeFormat.compact(m),
-                    onChanged: (v) => setState(() => _limitMinutes = v),
-                  ),
-                ),
-                Text(
-                  'Stages trigger at 50%, 100%, and 200% of this limit.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.35),
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Note for today (optional)',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withValues(alpha: 0.5),
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _intentionController,
-                  maxLines: 3,
-                  maxLength: 280,
+                  maxLines: 2,
+                  maxLength: 120,
                   style: const TextStyle(color: Colors.white, fontSize: 16),
                   decoration: InputDecoration(
-                    hintText: 'Skip or add a few words',
-                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.25)),
+                    hintText: 'Why do you need this app today?',
+                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2)),
                     filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.06),
+                    counterStyle: const TextStyle(color: Colors.white24),
+                    fillColor: Colors.white.withValues(alpha: 0.04),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.white12),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.white12),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.blueAccent),
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none,
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 32),
                 FilledButton(
                   onPressed: () async {
-                    final limit = _limitMinutes.round();
+                    final limit = _currentLimit;
                     if (LimitTimeFormat.needsHighLimitConfirm(limit)) {
                       final ok = await showHighLimitConfirmDialog(context, limit);
                       if (!ok || !context.mounted) return;
@@ -244,14 +239,15 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                   style: FilledButton.styleFrom(
                     backgroundColor: hard ? Colors.deepOrange.shade700 : Colors.white,
                     foregroundColor: hard ? Colors.white : Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(16),
                     ),
+                    elevation: 0,
                   ),
                   child: Text(
-                    hard ? 'Save (confirm)' : 'Save',
-                    style: const TextStyle(fontWeight: FontWeight.w800),
+                    hard ? 'Confirm & Save' : 'Set Limit',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
                   ),
                 ),
                 const SizedBox(height: 8),

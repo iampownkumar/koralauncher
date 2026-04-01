@@ -8,6 +8,7 @@ import 'services/usage_service.dart';
 import 'services/rising_tide_service.dart';
 import 'services/app_lock_manager.dart';
 import 'services/native_service.dart';
+import 'services/todo_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +16,7 @@ void main() async {
   await AppLockManager.init();
   await LauncherService.init();
   await UsageService.refreshUsage();
+  await TodoService.init();
   
   await RisingTideService.syncInterceptionState();
   

@@ -25,6 +25,8 @@ class NativeService {
         if (packageName != null) {
           await _onForegroundApp(packageName);
         }
+      } else if (call.method == 'onPackageChanged') {
+        await LauncherService.refreshApps();
       }
     });
   }

@@ -7,6 +7,7 @@ import '../services/storage_service.dart';
 import '../services/native_service.dart';
 import '../widgets/app_long_press_menu.dart';
 import 'interception_screen.dart';
+import 'package:android_intent_plus/android_intent.dart';
 
 class UsageDashboardScreen extends StatefulWidget {
   const UsageDashboardScreen({super.key});
@@ -100,6 +101,19 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
                   if (!_hasUsagePermission) _buildUsagePermissionBanner(),
                   _buildSummaryHeader(totalUsage),
                   const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      "APP USAGE",
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        letterSpacing: 3,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Expanded(
                     child: _sortedApps.isEmpty
                         ? const Center(
@@ -109,8 +123,11 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
                             ),
                           )
                         : ListView.builder(
-                            itemCount: _sortedApps.length,
+                            itemCount: _sortedApps.length + 1, // +1 for the settings card at the bottom
                             itemBuilder: (context, index) {
+                              if (index == _sortedApps.length) {
+                                return _buildLauncherSettingsCard();
+                              }
                               final app = _sortedApps[index];
                               final isFlagged = StorageService.isAppFlagged(
                                 app.packageName,
@@ -173,6 +190,74 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
                   ),
                 ],
               ),
+      ),
+    );
+  }
+
+  Widget _buildLauncherSettingsCard() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "LAUNCHER SETTINGS",
+            style: TextStyle(
+              color: Colors.white54,
+              fontSize: 10,
+              letterSpacing: 2,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            "Change Default Launcher",
+            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "Switch back to your system launcher or choose another one.",
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => NativeService.openDefaultLauncherSettings(),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.white24),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text("Home Settings", style: TextStyle(color: Colors.white, fontSize: 13)),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    const AndroidIntent(
+                      action: 'android.intent.action.SET_WALLPAPER',
+                    ).launch();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.white24),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text("Wallpaper", style: TextStyle(color: Colors.white, fontSize: 13)),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
