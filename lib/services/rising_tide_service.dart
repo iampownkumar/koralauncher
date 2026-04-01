@@ -39,7 +39,12 @@ class RisingTideService {
     } else if (usagePercent >= 1.0 || overrides >= 2) {
       stage = RisingTideStage.mirror;
     } else if (usagePercent >= 0.5) {
-      stage = RisingTideStage.dim;
+      // Only show the Dim gate if the user hasn't consciously decided today
+      if (!_hasUserDecidedToday(packageName)) {
+        stage = RisingTideStage.dim;
+      } else {
+        stage = RisingTideStage.whisper;
+      }
     } else {
       stage = RisingTideStage.whisper;
     }
@@ -123,6 +128,11 @@ class RisingTideService {
   static Future<void> markUserDecision(String packageName) async {
     final today = _localDayKey(DateTime.now());
     await StorageService.setString('rt_dim_decided_${today}_$packageName', 'true');
+  }
+
+  static bool _hasUserDecidedToday(String packageName) {
+    final today = _localDayKey(DateTime.now());
+    return StorageService.getString('rt_dim_decided_${today}_$packageName') == 'true';
   }
 
   static String _localDayKey(DateTime now) {
