@@ -1,6 +1,7 @@
 package org.korelium.koralauncher
 
 import android.app.AppOpsManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -144,6 +145,18 @@ class MainActivity: FlutterActivity() {
     }
 
     private fun openDefaultLauncherSettings() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                val roleManager = getSystemService(Context.ROLE_SERVICE) as android.app.role.RoleManager
+                if (roleManager.isRoleAvailable(android.app.role.RoleManager.ROLE_HOME)) {
+                    val intent = roleManager.createRequestRoleIntent(android.app.role.RoleManager.ROLE_HOME)
+                    startActivityForResult(intent, 101)
+                    return
+                }
+            } catch (e: Exception) {
+                // Ignore and fall back
+            }
+        }
         try {
             val intent = Intent(Settings.ACTION_HOME_SETTINGS)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -177,9 +190,16 @@ class MainActivity: FlutterActivity() {
         try {
             val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
             intent.data = android.net.Uri.parse("package:$packageName")
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             startActivity(intent)
         } catch (e: Exception) {
-            startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+            try {
+                val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                startActivity(intent)
+            } catch (e2: Exception) {
+                // Ignore
+            }
         }
     }
 
@@ -206,6 +226,9 @@ class MainActivity: FlutterActivity() {
     private fun openAccessibilitySettings() {
         try {
             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            val componentName = ComponentName(packageName, "$packageName.AccessibilityWatcherService").flattenToString()
+            intent.putExtra(":settings:fragment_args_key", componentName)
+            intent.putExtra(":settings:show_fragment_args", android.os.Bundle().apply { putString(":settings:fragment_args_key", componentName) })
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             startActivity(intent)
         } catch (e: Exception) {

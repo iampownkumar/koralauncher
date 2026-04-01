@@ -68,7 +68,8 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
       final isFlagged = StorageService.isAppFlagged(app.packageName);
 
       if (isFlagged) {
-        Navigator.push(
+        _searchController.clear();
+        Navigator.pushReplacement(
           context,
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
@@ -78,10 +79,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
                   return FadeTransition(opacity: animation, child: child);
                 },
           ),
-        ).then((_) {
-          _searchController.clear();
-          if (mounted) Navigator.pop(context);
-        });
+        );
       } else {
         LauncherService.launchApp(app.packageName).then((_) {
           _searchController.clear();
@@ -228,7 +226,8 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
           },
           onTap: () {
             if (isFlagged) {
-              Navigator.push(
+              _searchController.clear();
+              Navigator.pushReplacement(
                 context,
                 PageRouteBuilder(
                   pageBuilder: (context, animation, secondaryAnimation) =>
@@ -238,10 +237,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
                         return FadeTransition(opacity: animation, child: child);
                       },
                 ),
-              ).then((_) {
-                _searchController.clear();
-                if (mounted) Navigator.pop(context);
-              });
+              );
             } else {
               LauncherService.launchApp(app.packageName).then((_) {
                 _searchController.clear();

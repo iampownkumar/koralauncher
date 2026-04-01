@@ -115,8 +115,15 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
     if (afterInterceptionFlow) {
       ForegroundInterceptGuard.recordPostLaunchBypass(widget.app.packageName);
     }
-    InstalledApps.startApp(widget.app.packageName);
+    
+    // Pop the InterceptionScreen FIRST to return to the launcher securely
     if (mounted) Navigator.pop(context);
+    
+    // Tiny delay to let the Flutter route transition finish before bringing the external app to front,
+    // which prevents Android from bouncing back to the launcher.
+    await Future.delayed(const Duration(milliseconds: 50));
+    
+    InstalledApps.startApp(widget.app.packageName);
   }
 
   @override

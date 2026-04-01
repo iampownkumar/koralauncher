@@ -64,14 +64,10 @@ class RisingTideService {
       return;
     }
 
-    final interceptedPackages = <String>[];
-    // This is a placeholder for getting all apps - we should ideally check all launchable apps
-    // for now we'll just check flagged ones.
-    for (final packageName in StorageService.getFlaggedApps()) {
-      if (getStage(packageName) != RisingTideStage.whisper) {
-        interceptedPackages.add(packageName);
-      }
-    }
+    // Send all flagged apps to the native watcher so it can dynamically evaluate stages on launch.
+    // If we filter out 'whisper' here, the native service will ignore the app and it will never transition
+    // to dim/mirror/silence when launched outside of our launcher.
+    final interceptedPackages = StorageService.getFlaggedApps();
     await NativeService.sendBlockedApps(interceptedPackages);
   }
 

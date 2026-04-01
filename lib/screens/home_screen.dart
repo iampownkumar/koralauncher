@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/storage_service.dart';
-import '../services/launcher_service.dart';
 import '../services/usage_service.dart';
-import '../services/native_service.dart';
-import '../services/todo_service.dart';
 import 'app_drawer_screen.dart';
 import '../widgets/goal_setter.dart';
 import '../widgets/todo_list_card.dart';
@@ -12,9 +8,11 @@ import 'usage_dashboard_screen.dart';
 import 'tide_pool_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
-import '../widgets/permission_banners.dart';
+
 import 'package:upgrader/upgrader.dart';
 import 'package:intl/intl.dart';
+import '../state/home_controller.dart';
+import '../widgets/home_banners.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,92 +21,19 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-  bool _showGoalSetter = false;
-  bool _isDefaultLauncher = true;
-  bool _hasUsagePermission = true;
-  bool _hasAccessibilityPermission = true;
-  bool _pulseIntention = false;
-  String? _goal;
+class _HomeScreenState extends State<HomeScreen> {
+  final HomeController _controller = HomeController();
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) _refreshHomeState();
-    });
-    _loadInitialData();
+    _controller.init();
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
+    _controller.dispose();
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      FocusManager.instance.primaryFocus?.unfocus();
-    } else if (state == AppLifecycleState.resumed) {
-      if (mounted && Navigator.canPop(context)) {
-        Navigator.popUntil(context, (route) => route.isFirst);
-      }
-      _refreshHomeState();
-    }
-  }
-
-  Future<void> _refreshHomeState() async {
-    final isDefault = await NativeService.isDefaultLauncher();
-    final hasUsage = await NativeService.hasUsagePermission();
-    final hasAccessibility = await NativeService.hasAccessibilityPermission();
-    await UsageService.refreshUsage();
-    await TodoService.refreshTodos();
-    final newGoal = StorageService.getDailyIntention();
-
-    if (!mounted) return;
-
-    if (_isDefaultLauncher != isDefault ||
-        _hasUsagePermission != hasUsage ||
-        _hasAccessibilityPermission != hasAccessibility ||
-        _goal != newGoal) {
-      setState(() {
-        _isDefaultLauncher = isDefault;
-        _hasUsagePermission = hasUsage;
-        _hasAccessibilityPermission = hasAccessibility;
-        _goal = newGoal;
-      });
-    } else {
-      setState(() {});
-    }
-  }
-
-  Future<void> _loadInitialData() async {
-    await LauncherService.refreshApps();
-    await TodoService.init();
-    await _refreshHomeState();
-
-    if (!StorageService.hasCompletedOnboarding()) {
-      if (mounted) {
-        setState(() {
-          _showGoalSetter = true;
-        });
-      }
-    } else {
-      _checkMorningGoalTrigger();
-    }
-  }
-
-  void _checkMorningGoalTrigger() {
-    final now = DateTime.now();
-    if (now.hour >= 5 && now.hour < 10) {
-      if (_goal == null || _goal!.isEmpty) {
-        setState(() {
-          _pulseIntention = true;
-        });
-      }
-    }
   }
 
   void _openAppDrawer() {
@@ -132,17 +57,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         transitionDuration: const Duration(milliseconds: 300),
       ),
     ).then((_) {
-      _refreshHomeState();
+      _controller.refreshHomeState();
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      child: Scaffold(
-        resizeToAvoidBottomInset: true,
-        backgroundColor: Colors.black,
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) {
+        return PopScope(
+          canPop: false,
+          child: Scaffold(
+            resizeToAvoidBottomInset: true,
+            backgroundColor: Colors.black,
         body: Stack(
           children: [
             GestureDetector(
@@ -198,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               );
                             },
                       ),
-                    ).then((_) => setState(() {}));
+                    ).then((_) => _controller.triggerRefresh());
                   }
                 }
               },
@@ -214,23 +142,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           MediaQuery.of(context).padding.bottom,
                       child: Column(
                         children: [
-                          if (!_isDefaultLauncher)
-                            _buildDefaultLauncherBanner(),
-                          if (!_hasAccessibilityPermission)
-                            AccessibilityPermissionBanner(
-                              onEnabled: () {},
-                            ),
-                          if (_hasAccessibilityPermission &&
-                              !_hasUsagePermission)
-                            UsagePermissionBanner(
-                              onEnabled: () {},
-                            ),
+                          HomeBanners(controller: _controller),
                           _buildTopInfoBar(),
 
                           // _buildGoalHeader() replaced by chip in top bar
                           const SizedBox(height: 16),
 
-                          if (!_showGoalSetter) ...[
+                          if (!_controller.showGoalSetter) ...[
                             TodoListCard(
                               onTap: () {
                                 Navigator.push(
@@ -238,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                                   MaterialPageRoute(
                                     builder: (c) => const TodoScreen(),
                                   ),
-                                ).then((_) => setState(() {}));
+                                ).then((_) => _controller.triggerRefresh());
                               },
                             ),
                           ],
@@ -260,20 +178,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
 
-            if (_showGoalSetter)
+            if (_controller.showGoalSetter)
               GoalSetter(
-                initialGoal: _goal,
-                onDismiss: () {
-                  setState(() {
-                    _showGoalSetter = false;
-                  });
-                },
-                onGoalSet: () {
-                  setState(() {
-                    _showGoalSetter = false;
-                    _goal = StorageService.getDailyIntention();
-                  });
-                },
+                initialGoal: _controller.goal,
+                onDismiss: _controller.dismissGoalSetter,
+                onGoalSet: _controller.onGoalSet,
               ),
             UpgradeAlert(
               showIgnore: false,
@@ -284,6 +193,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ],
         ),
       ),
+        );
+      },
     );
   }
 
@@ -341,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           const SizedBox(width: 12),
           Expanded(child: _buildCenterIntentionText()),
           const SizedBox(width: 12),
-          if (_hasUsagePermission) _buildUsageStats(),
+          if (_controller.hasUsagePermission) _buildUsageStats(),
         ],
       ),
     );
@@ -350,9 +261,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildSetGoalPill() {
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _showGoalSetter = true;
-        });
+        _controller.showGoalSetterOverlay();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -380,10 +289,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildCenterIntentionText() {
-    final hasGoal = _goal != null && _goal!.isNotEmpty;
+    final String? goalStr = _controller.goal;
+    final hasGoal = goalStr != null && goalStr.isNotEmpty;
 
     Widget textWidget = Text(
-      hasGoal ? _goal! : "No intention set",
+      hasGoal ? goalStr : "No intention set",
       textAlign: TextAlign.center,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
@@ -394,7 +304,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ),
     );
 
-    if (_pulseIntention && !hasGoal) {
+    if (_controller.pulseIntention && !hasGoal) {
       // Soft single pulse on morning unlock if no goal
       textWidget = TweenAnimationBuilder<double>(
         tween: Tween(begin: 0.3, end: 1.0),
@@ -404,11 +314,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           return Opacity(opacity: val, child: child);
         },
         onEnd: () {
-          if (mounted) {
-            setState(() {
-              _pulseIntention = false;
-            });
-          }
+          _controller.stopPulse();
         },
         child: textWidget,
       );
@@ -416,10 +322,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _pulseIntention = false;
-          _showGoalSetter = true;
-        });
+        _controller.stopPulse();
+        _controller.showGoalSetterOverlay();
       },
       child: textWidget,
     );
@@ -464,50 +368,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildDefaultLauncherBanner() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      color: Colors.black.withValues(alpha: 0.6),
-      child: Row(
-        children: [
-          Icon(Icons.home, size: 18, color: Theme.of(context).primaryColor),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              "Kora is not default launcher",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).primaryColor,
-              foregroundColor: Colors.black,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () {
-              NativeService.openDefaultLauncherSettings();
-            },
-            child: Text(
-              "SET DEFAULT",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

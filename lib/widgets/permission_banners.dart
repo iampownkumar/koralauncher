@@ -106,3 +106,53 @@ class UsagePermissionBanner extends StatelessWidget {
     );
   }
 }
+
+class DefaultLauncherBanner extends StatelessWidget {
+  const DefaultLauncherBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      color: Colors.black.withValues(alpha: 0.6),
+      child: Row(
+        children: [
+          Icon(Icons.home, size: 18, color: Theme.of(context).primaryColor),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              "Kora is not default launcher",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).primaryColor,
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () async {
+              await NativeService.openDefaultLauncherSettings();
+            },
+            child: const Text(
+              "SET DEFAULT",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
