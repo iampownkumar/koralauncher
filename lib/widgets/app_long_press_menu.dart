@@ -51,8 +51,14 @@ void showAppLongPressMenu(
                     ),
                   ),
                   ListTile(
-                    leading: const Icon(Icons.info_outline, color: Colors.white70),
-                    title: const Text('App info', style: TextStyle(color: Colors.white)),
+                    leading: const Icon(
+                      Icons.info_outline,
+                      color: Colors.white70,
+                    ),
+                    title: const Text(
+                      'App info',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     subtitle: Text(
                       'System settings for this app',
                       style: TextStyle(
@@ -71,7 +77,10 @@ void showAppLongPressMenu(
                   ),
                   ListTile(
                     leading: const Icon(Icons.schedule, color: Colors.white70),
-                    title: const Text('Set daily limit', style: TextStyle(color: Colors.white)),
+                    title: const Text(
+                      'Set daily limit',
+                      style: TextStyle(color: Colors.white),
+                    ),
                     subtitle: Text(
                       'Rising Tide budget for this app',
                       style: TextStyle(
@@ -88,24 +97,39 @@ void showAppLongPressMenu(
                         builder: (context) => DailyLimitSheet(
                           packageName: app.packageName,
                           appLabel: app.name,
-                          initialLimitMinutes: StorageService.getAppDailyLimitMinutes(
-                            app.packageName,
-                          ),
+                          initialLimitMinutes:
+                              StorageService.getAppDailyLimitMinutes(
+                                app.packageName,
+                              ),
                         ),
-                      );
+                      ).then((_) {
+                        // Sheet has closed — rebuild the parent so the Rising Tide
+                        // symbol and flagged status reflect the saved changes.
+                        onChanged();
+                      });
                     },
                   ),
                   Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: flagged
-                          ? Theme.of(context).primaryColor.withValues(alpha: 0.2)
+                          ? Theme.of(
+                              context,
+                            ).primaryColor.withValues(alpha: 0.2)
                           : Colors.white.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: flagged
-                            ? Theme.of(context).primaryColor.withValues(alpha: 0.85)
+                            ? Theme.of(
+                                context,
+                              ).primaryColor.withValues(alpha: 0.85)
                             : Colors.white24,
                         width: flagged ? 2 : 1,
                       ),
@@ -116,7 +140,9 @@ void showAppLongPressMenu(
                         'Rising Tide on this app',
                         style: TextStyle(
                           color: Colors.white,
-                          fontWeight: flagged ? FontWeight.w800 : FontWeight.w600,
+                          fontWeight: flagged
+                              ? FontWeight.w800
+                              : FontWeight.w600,
                           fontSize: 16,
                         ),
                       ),
@@ -131,12 +157,16 @@ void showAppLongPressMenu(
                       ),
                       value: flagged,
                       activeThumbColor: Theme.of(context).primaryColor,
-                      activeTrackColor: Theme.of(context).primaryColor.withValues(alpha: 0.45),
+                      activeTrackColor: Theme.of(
+                        context,
+                      ).primaryColor.withValues(alpha: 0.45),
                       inactiveThumbColor: Colors.white54,
                       inactiveTrackColor: Colors.white12,
                       onChanged: (v) async {
                         if (StorageService.isAppFlagged(app.packageName) != v) {
-                          await StorageService.toggleFlaggedApp(app.packageName);
+                          await StorageService.toggleFlaggedApp(
+                            app.packageName,
+                          );
                         }
                         setModalState(() {});
                         onChanged();

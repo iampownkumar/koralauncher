@@ -2,7 +2,6 @@ import '../models/rising_tide_stage.dart';
 import 'usage_service.dart';
 import 'storage_service.dart';
 import 'native_service.dart';
-import 'app_lock_manager.dart';
 import 'rising_tide_logger.dart';
 
 class RisingTideService {
@@ -12,11 +11,6 @@ class RisingTideService {
   /// Calculates the current Rising Tide stage for a given package.
   static RisingTideStage getStage(String packageName) {
     if (!StorageService.isRisingTideMasterEnabled()) {
-      return RisingTideStage.whisper;
-    }
-
-    // Check if the user has an active 5-minute task unlock
-    if (AppLockManager.hasActiveUnlock(packageName)) {
       return RisingTideStage.whisper;
     }
 
@@ -30,32 +24,33 @@ class RisingTideService {
     if (limitMin <= 0) {
       return RisingTideStage.whisper;
     }
-    final usagePercent = usageMinutes / limitMin;
-    final overrides = _getTodayOverrideCount(packageName);
 
-    RisingTideStage stage;
-    if (usagePercent >= 2.0 || overrides >= 3) {
-      stage = RisingTideStage.silence;
-    } else if (usagePercent >= 1.0 || overrides >= 2) {
-      stage = RisingTideStage.mirror;
-    } else if (usagePercent >= 0.5) {
-      stage = RisingTideStage.dim;
-    } else {
-      stage = RisingTideStage.whisper;
+    // Gate fires at 50% of the daily limit.
+    // Only suppressed if the user made a CONSCIOUS decision ("Open anyway") today.
+    // Closing the gate without deciding keeps it active for next open.
+    if (usageMinutes >= (limitMin * 0.5).floor()) {
+      if (_hasUserDecidedToday(packageName)) {
+        return RisingTideStage.whisper;
+      }
+      return RisingTideStage.dim;
     }
 
-    // Reopen lock (readme): force the same gate again (Stage 2 or 3), not an upgrade to mirror.
-    if (isPackageLocked(packageName)) {
-      if (stage == RisingTideStage.silence) {
-        return RisingTideStage.silence;
-      }
-      if (stage == RisingTideStage.whisper) {
-        return RisingTideStage.dim;
-      }
-      return stage;
-    }
+    return RisingTideStage.whisper;
+  }
 
-    return stage;
+  static String _decisionKey(String packageName) {
+    final today = _localDayKey(DateTime.now());
+    return 'rt_dim_decided_${today}_$packageName';
+  }
+
+  static bool _hasUserDecidedToday(String packageName) {
+    return StorageService.getString(_decisionKey(packageName)) == 'true';
+  }
+
+  /// Call this ONLY when the user consciously taps "Open anyway".
+  /// Do NOT call on "Close" or back-press — that keeps the gate alive.
+  static Future<void> markUserDecision(String packageName) async {
+    await StorageService.setString(_decisionKey(packageName), 'true');
   }
 
   /// Synchronizes the list of apps that need interception with the native Accessibility service.
@@ -95,7 +90,7 @@ class RisingTideService {
   }
 
   /// Returns how many times the user has chosen to "Continue" today for this app.
-  static int _getTodayOverrideCount(String packageName) {
+  static int getTodayOverrideCount(String packageName) {
     final today = _localDayKey(DateTime.now());
     final key = 'rt_overrides_${today}_$packageName';
     return int.tryParse(StorageService.getString(key) ?? '0') ?? 0;
@@ -111,11 +106,10 @@ class RisingTideService {
   }
 
   static Future<void> recordOverride(String packageName) async {
-    final count = _getTodayOverrideCount(packageName);
+    final count = getTodayOverrideCount(packageName);
     final today = _localDayKey(DateTime.now());
     final key = 'rt_overrides_${today}_$packageName';
     await StorageService.setString(key, (count + 1).toString());
-    
     // Sync state immediately to native
     await syncInterceptionState();
   }
