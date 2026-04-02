@@ -80,7 +80,37 @@ class _OnboardingFlowState extends State<OnboardingFlow>
     );
   }
 
+  DateTime? _lastBackPress;
+
   Future<void> _next() => _goToPage(_currentPage + 1);
+
+  Future<bool> _onBack() async {
+    if (_currentPage > 0) {
+      FocusManager.instance.primaryFocus?.unfocus();
+      await _goToPage(_currentPage - 1);
+      return false;
+    }
+    final now = DateTime.now();
+    if (_lastBackPress == null ||
+        now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+      _lastBackPress = now;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Press back again to exit'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.white12,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          ),
+        );
+      }
+      return false;
+    }
+    return true;
+  }
 
   Future<void> _finish() async {
     await StorageService.completeOnboarding(); // also clears the step key
@@ -89,10 +119,19 @@ class _OnboardingFlowState extends State<OnboardingFlow>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final shouldPop = await _onBack();
+        if (shouldPop && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
           PageView(
             controller: _page,
             physics: const NeverScrollableScrollPhysics(),
@@ -155,6 +194,7 @@ class _OnboardingFlowState extends State<OnboardingFlow>
             ),
         ],
       ),
+    ),
     );
   }
 }
