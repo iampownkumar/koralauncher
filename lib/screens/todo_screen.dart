@@ -34,92 +34,111 @@ class _TodoScreenState extends State<TodoScreen> {
   }
 
   Future<void> _showEditDialog(int id, String currentTitle) async {
-    final ctrl = TextEditingController(text: currentTitle);
-    // Use a bottom sheet for a cleaner, keyboard-friendly UX
+    String? savedTitle;
+
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          ),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF0F172A),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              border: Border(top: BorderSide(color: Colors.white10)),
-            ),
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40, height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white24,
-                      borderRadius: BorderRadius.circular(2),
+        // Controller lives INSIDE the builder so it is owned by the widget tree
+        // and not orphaned when the keyboard causes rebuilds.
+        final ctrl = TextEditingController(text: currentTitle)
+          ..selection = TextSelection(
+            baseOffset: 0,
+            extentOffset: currentTitle.length,
+          );
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              ),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0F172A),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  border: Border(top: BorderSide(color: Colors.white10)),
+                ),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Edit task',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: ctrl,
-                  autofocus: true,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.07),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide.none,
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Edit task',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white38, size: 18),
-                      onPressed: () => ctrl.clear(),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: ctrl,
+                      autofocus: true,
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.07),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.close,
+                              color: Colors.white38, size: 18),
+                          onPressed: () => ctrl.clear(),
+                        ),
+                      ),
+                      onSubmitted: (v) {
+                        savedTitle = v.trim();
+                        Navigator.pop(ctx);
+                      },
                     ),
-                  ),
-                  onSubmitted: (_) => Navigator.pop(ctx),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                      onPressed: () {
+                        savedTitle = ctrl.text.trim();
+                        Navigator.pop(ctx);
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.cyanAccent,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: const Text('Save task',
+                          style: TextStyle(fontWeight: FontWeight.w800)),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.cyanAccent,
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                  ),
-                  child: const Text('Save task',
-                      style: TextStyle(fontWeight: FontWeight.w800)),
-                ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
 
-    // Read text BEFORE disposing the controller
-    final newTitle = ctrl.text.trim();
-    ctrl.dispose();
-    if (newTitle.isNotEmpty && newTitle != currentTitle && mounted) {
-      await TodoService.editTodo(id, newTitle);
+    if (savedTitle != null &&
+        savedTitle!.isNotEmpty &&
+        savedTitle != currentTitle &&
+        mounted) {
+      await TodoService.editTodo(id, savedTitle!);
       setState(() {});
     }
   }

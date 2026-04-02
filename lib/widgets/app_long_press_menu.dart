@@ -120,16 +120,12 @@ void showAppLongPressMenu(
                     ),
                     decoration: BoxDecoration(
                       color: flagged
-                          ? Theme.of(
-                              context,
-                            ).primaryColor.withValues(alpha: 0.2)
+                          ? Colors.cyanAccent.withValues(alpha: 0.1)
                           : Colors.white.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: flagged
-                            ? Theme.of(
-                                context,
-                              ).primaryColor.withValues(alpha: 0.85)
+                            ? Colors.cyanAccent.withValues(alpha: 0.6)
                             : Colors.white24,
                         width: flagged ? 2 : 1,
                       ),
@@ -156,10 +152,8 @@ void showAppLongPressMenu(
                         ),
                       ),
                       value: flagged,
-                      activeThumbColor: Theme.of(context).primaryColor,
-                      activeTrackColor: Theme.of(
-                        context,
-                      ).primaryColor.withValues(alpha: 0.45),
+                      activeThumbColor: Colors.cyanAccent,
+                      activeTrackColor: Colors.cyan.withValues(alpha: 0.45),
                       inactiveThumbColor: Colors.white54,
                       inactiveTrackColor: Colors.white12,
                       onChanged: (v) async {
