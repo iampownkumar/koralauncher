@@ -125,5 +125,16 @@ class StorageService {
 
   static Future<void> completeOnboarding() async {
     await _prefs.setBool('has_completed_onboarding', true);
+    await _prefs.remove('onboarding_step'); // clean up step tracker
+  }
+
+  /// Persists the current onboarding page so the app can resume if Android
+  /// restarts the activity mid-onboarding (e.g. when setting default launcher).
+  static int getOnboardingStep() {
+    return _prefs.getInt('onboarding_step') ?? 0;
+  }
+
+  static Future<void> setOnboardingStep(int step) async {
+    await _prefs.setInt('onboarding_step', step);
   }
 }

@@ -1,27 +1,12 @@
 import 'package:flutter/material.dart';
-import '../state/home_controller.dart';
-import 'permission_banners.dart';
 
+/// Returns an empty column — permission banners removed.
+/// Onboarding flow and Permissions & Privacy screen handle all setup prompts.
 class HomeBanners extends StatelessWidget {
-  final HomeController controller;
-  
+  // ignore: unused_element
+  final dynamic controller;
   const HomeBanners({super.key, required this.controller});
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        if (!controller.isDefaultLauncher)
-          const DefaultLauncherBanner(),
-        if (!controller.hasAccessibilityPermission)
-          AccessibilityPermissionBanner(
-            onEnabled: controller.triggerRefresh,
-          ),
-        if (controller.hasAccessibilityPermission && !controller.hasUsagePermission)
-          UsagePermissionBanner(
-            onEnabled: controller.triggerRefresh,
-          ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }

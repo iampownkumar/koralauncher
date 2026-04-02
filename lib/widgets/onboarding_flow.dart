@@ -7,7 +7,8 @@ import 'accessibility_disclosure_sheet.dart';
 import 'permission_widgets.dart';
 
 /// 4-page onboarding: Welcome → Intention → Permissions → Done.
-/// Call [OnboardingFlow.show] from main.dart when onboarding is not complete.
+/// Persists current page so Android activity restarts (e.g. when setting
+/// default launcher) resume on the correct page instead of restarting.
 class OnboardingFlow extends StatefulWidget {
   const OnboardingFlow({super.key, required this.onComplete});
   final VoidCallback onComplete;
@@ -16,8 +17,9 @@ class OnboardingFlow extends StatefulWidget {
   State<OnboardingFlow> createState() => _OnboardingFlowState();
 }
 
-class _OnboardingFlowState extends State<OnboardingFlow> {
-  final _page = PageController();
+class _OnboardingFlowState extends State<OnboardingFlow>
+    with WidgetsBindingObserver {
+  late final PageController _page;
   int _currentPage = 0;
 
   // Page 2 – intention
@@ -31,14 +33,28 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Restore page from storage so Android-restart stays on the right step
+    final savedStep = StorageService.getOnboardingStep();
+    _currentPage = savedStep;
+    _page = PageController(initialPage: savedStep);
     _refreshPermissions();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _page.dispose();
     _intentionCtrl.dispose();
     super.dispose();
+  }
+
+  /// Re-check permissions whenever the user returns from Android settings.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshPermissions();
+    }
   }
 
   Future<void> _refreshPermissions() async {
@@ -54,20 +70,20 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
     }
   }
 
-  void _next() {
-    if (_currentPage < 3) {
-      _page.nextPage(
-          duration: const Duration(milliseconds: 340), curve: Curves.easeOutCubic);
-    }
+  Future<void> _goToPage(int page) async {
+    setState(() => _currentPage = page);
+    await StorageService.setOnboardingStep(page);
+    _page.animateToPage(
+      page,
+      duration: const Duration(milliseconds: 340),
+      curve: Curves.easeOutCubic,
+    );
   }
 
-  void _goPage(int page) {
-    _page.animateToPage(page,
-        duration: const Duration(milliseconds: 340), curve: Curves.easeOutCubic);
-  }
+  Future<void> _next() => _goToPage(_currentPage + 1);
 
   Future<void> _finish() async {
-    await StorageService.completeOnboarding();
+    await StorageService.completeOnboarding(); // also clears the step key
     widget.onComplete();
   }
 
@@ -80,12 +96,12 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           PageView(
             controller: _page,
             physics: const NeverScrollableScrollPhysics(),
-            onPageChanged: (i) => setState(() => _currentPage = i),
+            onPageChanged: (i) {
+              setState(() => _currentPage = i);
+              StorageService.setOnboardingStep(i);
+            },
             children: [
-              _WelcomePage(
-                onContinue: _next,
-                onSkip: _finish,
-              ),
+              _WelcomePage(onContinue: _next, onSkip: _finish),
               _IntentionPage(
                 controller: _intentionCtrl,
                 onSave: () async {
@@ -104,14 +120,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
                 hasUsage: _hasUsage,
                 hasAccessibility: _hasAccessibility,
                 onRefresh: _refreshPermissions,
-                onContinue: () => _goPage(3),
+                onContinue: () => _goToPage(3),
                 onSkip: _finish,
               ),
               _DonePage(onGo: _finish),
             ],
           ),
 
-          // Page indicator dots (top-right, skip on Done page)
+          // Page indicator dots
           if (_currentPage < 3)
             Positioned(
               top: MediaQuery.of(context).padding.top + 16,
@@ -154,14 +170,12 @@ class _WelcomePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Logo / wordmark
             Container(
               width: 56, height: 56,
               decoration: BoxDecoration(
                 color: Colors.cyanAccent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                    color: Colors.cyanAccent.withValues(alpha: 0.35)),
+                border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.35)),
               ),
               child: const Icon(Icons.waves, color: Colors.cyanAccent, size: 28),
             ),
@@ -169,10 +183,8 @@ class _WelcomePage extends StatelessWidget {
             const Text(
               'Welcome to Kora',
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.w800,
-                height: 1.15,
+                color: Colors.white, fontSize: 32,
+                fontWeight: FontWeight.w800, height: 1.15,
               ),
             ),
             const SizedBox(height: 16),
@@ -180,8 +192,7 @@ class _WelcomePage extends StatelessWidget {
               'A minimal launcher that helps you pause\nbefore distraction.',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.55),
-                fontSize: 16,
-                height: 1.5,
+                fontSize: 16, height: 1.5,
               ),
             ),
             const Spacer(),
@@ -200,9 +211,7 @@ class _WelcomePage extends StatelessWidget {
 // ─────────────────────────────────────────────────
 class _IntentionPage extends StatelessWidget {
   const _IntentionPage({
-    required this.controller,
-    required this.onSave,
-    required this.onSkip,
+    required this.controller, required this.onSave, required this.onSkip,
   });
   final TextEditingController controller;
   final VoidCallback onSave;
@@ -222,10 +231,8 @@ class _IntentionPage extends StatelessWidget {
             const Text(
               'What matters today?',
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.w800,
-                height: 1.2,
+                color: Colors.white, fontSize: 28,
+                fontWeight: FontWeight.w800, height: 1.2,
               ),
             ),
             const SizedBox(height: 12),
@@ -233,8 +240,7 @@ class _IntentionPage extends StatelessWidget {
               'Set a small intention for today.\nYou can change this later.',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.5),
-                fontSize: 15,
-                height: 1.5,
+                fontSize: 15, height: 1.5,
               ),
             ),
             const SizedBox(height: 32),
@@ -242,14 +248,12 @@ class _IntentionPage extends StatelessWidget {
               controller: controller,
               autofocus: false,
               style: const TextStyle(color: Colors.white, fontSize: 17),
-              maxLines: 3,
-              minLines: 1,
+              maxLines: 3, minLines: 1,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => onSave(),
               decoration: InputDecoration(
                 hintText: 'Finish the app update',
-                hintStyle:
-                    TextStyle(color: Colors.white.withValues(alpha: 0.2)),
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2)),
                 filled: true,
                 fillColor: Colors.white.withValues(alpha: 0.05),
                 border: OutlineInputBorder(
@@ -271,21 +275,20 @@ class _IntentionPage extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────
-// Page 3: Permissions
+// Page 3: Permissions – StatefulWidget handles its own
+// lifecycle so cards update when the user comes back
+// from Android settings without losing page position.
 // ─────────────────────────────────────────────────
 class _PermissionsPage extends StatelessWidget {
   const _PermissionsPage({
-    required this.isDefault,
-    required this.hasUsage,
-    required this.hasAccessibility,
-    required this.onRefresh,
-    required this.onContinue,
-    required this.onSkip,
+    required this.isDefault, required this.hasUsage,
+    required this.hasAccessibility, required this.onRefresh,
+    required this.onContinue, required this.onSkip,
   });
   final bool isDefault;
   final bool hasUsage;
   final bool hasAccessibility;
-  final VoidCallback onRefresh;
+  final Future<void> Function() onRefresh;
   final VoidCallback onContinue;
   final VoidCallback onSkip;
 
@@ -300,9 +303,8 @@ class _PermissionsPage extends StatelessWidget {
             child: Text(
               'Optional setup',
               style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800),
+                color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800,
+              ),
             ),
           ),
           Padding(
@@ -310,9 +312,9 @@ class _PermissionsPage extends StatelessWidget {
             child: Text(
               'Turn on the features you want.\nYou can change these anytime in Settings.',
               style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.5),
-                  fontSize: 14,
-                  height: 1.5),
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 14, height: 1.5,
+              ),
             ),
           ),
           Expanded(
@@ -322,18 +324,16 @@ class _PermissionsPage extends StatelessWidget {
                 PermissionStatusCard(
                   icon: Icons.home_outlined,
                   title: 'Make Kora your launcher',
-                  description:
-                      'Lets Kora become your home screen.',
+                  description: 'Lets Kora become your home screen.',
                   isEnabled: isDefault,
-                  actionLabel:
-                      isDefault ? 'Active' : 'Open Home Settings',
+                  actionLabel: isDefault ? 'Active ✓' : 'Open Home Settings',
                   onAction: isDefault
                       ? () {}
                       : () async {
+                          // Note: setting default launcher may restart the
+                          // activity. The WidgetsBindingObserver in
+                          // _OnboardingFlowState will refresh on resume.
                           await NativeService.openDefaultLauncherSettings();
-                          await Future.delayed(
-                              const Duration(milliseconds: 600));
-                          onRefresh();
                         },
                 ),
                 PermissionStatusCard(
@@ -342,15 +342,11 @@ class _PermissionsPage extends StatelessWidget {
                   description:
                       'Used for screen time, app usage stats, and daily limits.',
                   isEnabled: hasUsage,
-                  actionLabel:
-                      hasUsage ? 'Active' : 'Open Usage Access',
+                  actionLabel: hasUsage ? 'Active ✓' : 'Open Usage Access',
                   onAction: hasUsage
                       ? () {}
                       : () async {
                           await NativeService.openUsageSettings();
-                          await Future.delayed(
-                              const Duration(milliseconds: 600));
-                          onRefresh();
                         },
                 ),
                 PermissionStatusCard(
@@ -359,11 +355,10 @@ class _PermissionsPage extends StatelessWidget {
                   description:
                       'Pauses before apps you mark for Rising Tide.',
                   isEnabled: hasAccessibility,
-                  actionLabel: hasAccessibility ? 'Active' : 'Enable',
+                  actionLabel: hasAccessibility ? 'Active ✓' : 'Enable',
                   onAction: hasAccessibility
                       ? () {}
-                      : () => AccessibilityDisclosureSheet.show(context)
-                            .then((_) => onRefresh()),
+                      : () => AccessibilityDisclosureSheet.show(context),
                 ),
               ],
             ),
@@ -402,19 +397,15 @@ class _DonePage extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.cyanAccent.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                    color: Colors.cyanAccent.withValues(alpha: 0.4)),
+                border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.4)),
               ),
-              child: const Icon(Icons.check_rounded,
-                  color: Colors.cyanAccent, size: 30),
+              child: const Icon(Icons.check_rounded, color: Colors.cyanAccent, size: 30),
             ),
             const SizedBox(height: 36),
             const Text(
               'Kora is ready.',
               style: TextStyle(
-                color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.w800,
+                color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 16),
@@ -422,8 +413,7 @@ class _DonePage extends StatelessWidget {
               'Start simple.\nYou can enable more controls anytime.',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.5),
-                fontSize: 16,
-                height: 1.5,
+                fontSize: 16, height: 1.5,
               ),
             ),
             const Spacer(),
@@ -453,8 +443,7 @@ class _PrimaryButton extends StatelessWidget {
           backgroundColor: Colors.cyanAccent,
           foregroundColor: Colors.black,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
         child: Text(label,
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
