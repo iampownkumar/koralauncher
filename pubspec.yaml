@@ -1,7 +1,7 @@
 name: koralauncher
 description: "Kora — A launcher that asks why. Behavioral screen-time control for Android."
 publish_to: 'none'
-version: 1.0.6+6
+version: 1.0.7+7
 
 environment:
   sdk: ^3.11.3

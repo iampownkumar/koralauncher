@@ -111,7 +111,7 @@ class PermissionStatusCard extends StatelessWidget {
                                 : Icons.arrow_forward_ios,
                             color: isEnabled
                                 ? Colors.cyanAccent.withValues(alpha: 0.7)
-                                : Colors.white24,
+                                : Colors.cyanAccent.withValues(alpha: 0.6),
                             size: 12,
                           ),
                           const SizedBox(width: 6),
@@ -122,9 +122,10 @@ class PermissionStatusCard extends StatelessWidget {
                             style: TextStyle(
                               color: isEnabled
                                   ? Colors.cyanAccent.withValues(alpha: 0.7)
-                                  : Colors.white38,
+                                  : Colors.cyanAccent.withValues(alpha: 0.8),
                               fontSize: 11,
-                              fontWeight: FontWeight.w600,
+                              fontWeight:
+                                  isEnabled ? FontWeight.w600 : FontWeight.w700,
                             ),
                           ),
                         ],
@@ -236,7 +237,7 @@ class SettingsPermissionRow extends StatelessWidget {
                 const SizedBox(width: 12),
                 _StatusChip(isEnabled: isEnabled),
                 const SizedBox(width: 8),
-                Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 13),
+                Icon(Icons.arrow_forward_ios, color: Colors.cyanAccent.withValues(alpha: 0.6), size: 13),
               ],
             ),
           ),

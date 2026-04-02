@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/usage_service.dart';
+import '../services/native_service.dart';
+import '../services/storage_service.dart';
 import 'app_drawer_screen.dart';
 import '../widgets/goal_setter.dart';
 import '../widgets/todo_list_card.dart';
@@ -144,6 +146,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Column(
                         children: [
                           HomeBanners(controller: _controller),
+                          // Default launcher nudge — shown only after onboarding, until set
+                          if (StorageService.hasCompletedOnboarding() &&
+                              !_controller.isDefaultLauncher)
+                            _buildDefaultLauncherBanner(),
                           _buildTopInfoBar(),
 
                           // _buildGoalHeader() replaced by chip in top bar
@@ -196,6 +202,48 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
         );
       },
+    );
+  }
+
+  Widget _buildDefaultLauncherBanner() {
+    return GestureDetector(
+      onTap: () => NativeService.openDefaultLauncherSettings(),
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        decoration: BoxDecoration(
+          color: Colors.cyanAccent.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: Colors.cyanAccent.withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.home_outlined, color: Colors.cyanAccent, size: 18),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Set Kora as default launcher to keep it as your home screen.',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              'Set now →',
+              style: TextStyle(
+                color: Colors.cyanAccent,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
