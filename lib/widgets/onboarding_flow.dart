@@ -105,6 +105,8 @@ class _OnboardingFlowState extends State<OnboardingFlow>
               _IntentionPage(
                 controller: _intentionCtrl,
                 onSave: () async {
+                  // Close keyboard before sliding to next page
+                  FocusManager.instance.primaryFocus?.unfocus();
                   final text = _intentionCtrl.text.trim();
                   if (text.isNotEmpty) {
                     await StorageService.setDailyIntention(text);
@@ -113,7 +115,10 @@ class _OnboardingFlowState extends State<OnboardingFlow>
                   }
                   _next();
                 },
-                onSkip: _next,
+                onSkip: () {
+                  FocusManager.instance.primaryFocus?.unfocus();
+                  _next();
+                },
               ),
               _PermissionsPage(
                 isDefault: _isDefault,
