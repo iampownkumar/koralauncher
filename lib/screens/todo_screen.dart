@@ -35,57 +35,129 @@ class _TodoScreenState extends State<TodoScreen> {
 
   Future<void> _showEditDialog(int id, String currentTitle) async {
     final ctrl = TextEditingController(text: currentTitle);
+    // Use a bottom sheet for a cleaner, keyboard-friendly UX
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFF0F172A),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border(top: BorderSide(color: Colors.white10)),
+            ),
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Edit task',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: ctrl,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.07),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white38, size: 18),
+                      onPressed: () => ctrl.clear(),
+                    ),
+                  ),
+                  onSubmitted: (_) => Navigator.pop(ctx),
+                ),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.cyanAccent,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                  ),
+                  child: const Text('Save task',
+                      style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    // Read text BEFORE disposing the controller
+    final newTitle = ctrl.text.trim();
+    ctrl.dispose();
+    if (newTitle.isNotEmpty && newTitle != currentTitle && mounted) {
+      await TodoService.editTodo(id, newTitle);
+      setState(() {});
+    }
+  }
+
+  Future<bool> _confirmDelete(String title) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF0F172A),
-        title: const Text(
-          'Edit task',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-        ),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: 'Task title…',
-            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
-            filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.06),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-          ),
-          onSubmitted: (_) => Navigator.pop(ctx, true),
+        title: const Text('Delete task?',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        content: Text(
+          '"$title"',
+          style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontStyle: FontStyle.italic),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.45)),
-            ),
+            child: Text('Keep it',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.5))),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.cyanAccent,
-              foregroundColor: Colors.black,
+              backgroundColor: Colors.redAccent.withValues(alpha: 0.8),
+              foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
             ),
-            child:
-                const Text('Save', style: TextStyle(fontWeight: FontWeight.w700)),
+            child: const Text('Delete',
+                style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
     );
-    ctrl.dispose();
-    if (confirmed == true && ctrl.text.trim().isNotEmpty && mounted) {
-      await TodoService.editTodo(id, ctrl.text.trim());
-      setState(() {});
-    }
+    return confirmed == true;
   }
 
   @override
@@ -205,6 +277,7 @@ class _TodoScreenState extends State<TodoScreen> {
                       return Dismissible(
                         key: ValueKey(todo.id),
                         direction: DismissDirection.endToStart,
+                        confirmDismiss: (_) => _confirmDelete(todo.title),
                         onDismissed: (_) async {
                           await TodoService.deleteTodo(todo.id);
                           if (mounted) setState(() {});
@@ -215,11 +288,20 @@ class _TodoScreenState extends State<TodoScreen> {
                           margin: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.redAccent.withValues(alpha: 0.15),
+                            color: Colors.redAccent.withValues(alpha: 0.18),
                             borderRadius: BorderRadius.circular(16),
                           ),
-                          child: const Icon(Icons.delete_outline,
-                              color: Colors.redAccent),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.delete_outline, color: Colors.redAccent),
+                              const SizedBox(height: 2),
+                              Text('Delete', style: TextStyle(
+                                color: Colors.redAccent.withValues(alpha: 0.8),
+                                fontSize: 10, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
                         ),
                         child: Container(
                           key: ValueKey('card_${todo.id}'),

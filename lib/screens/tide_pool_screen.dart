@@ -138,6 +138,15 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                       hintText: 'Search any app to flag...',
                       hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
                       prefixIcon: const Icon(Icons.search, color: Colors.white38),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close, color: Colors.white38, size: 18),
+                              onPressed: () {
+                                _searchController.clear();
+                                _searchFocusNode.unfocus();
+                              },
+                            )
+                          : null,
                       filled: true,
                       fillColor: Colors.white.withValues(alpha: 0.05),
                       border: OutlineInputBorder(
