@@ -246,7 +246,7 @@ class _IntentionPage extends StatelessWidget {
             const SizedBox(height: 32),
             TextField(
               controller: controller,
-              autofocus: false,
+              autofocus: true,
               style: const TextStyle(color: Colors.white, fontSize: 17),
               maxLines: 3, minLines: 1,
               textInputAction: TextInputAction.done,
@@ -301,7 +301,7 @@ class _PermissionsPage extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.fromLTRB(28, 48, 28, 0),
             child: Text(
-              'Optional setup',
+              'Permission manager',
               style: TextStyle(
                 color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800,
               ),

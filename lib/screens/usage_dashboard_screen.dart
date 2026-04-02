@@ -8,7 +8,6 @@ import '../services/native_service.dart';
 import '../widgets/app_long_press_menu.dart';
 import 'interception_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
-import '../widgets/permission_banners.dart';
 
 class UsageDashboardScreen extends StatefulWidget {
   const UsageDashboardScreen({super.key});
@@ -20,7 +19,6 @@ class UsageDashboardScreen extends StatefulWidget {
 class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
   List<AppInfo> _sortedApps = [];
   bool _isLoading = true;
-  bool _hasUsagePermission = true;
 
   int _roundedMinutesForApp(String packageName) {
     return (UsageService.getAppUsage(packageName).inMilliseconds + 30000) ~/ 60000;
@@ -37,8 +35,6 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
   }
 
   Future<void> _loadDashBoardData() async {
-    final hasPermission = await NativeService.hasUsagePermission();
-    // Make sure we have the latest usage logic from UsageService
     await UsageService.refreshUsage();
 
     // Grab all launchable apps
@@ -59,7 +55,6 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
         _sortedApps = apps
             .where((app) => _roundedMinutesForApp(app.packageName) >= 1)
             .toList();
-        _hasUsagePermission = hasPermission;
         _isLoading = false;
       });
     }
@@ -99,7 +94,6 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (!_hasUsagePermission) UsagePermissionBanner(onEnabled: _loadDashBoardData),
                   _buildSummaryHeader(totalUsage),
                   const SizedBox(height: 16),
                   Padding(
