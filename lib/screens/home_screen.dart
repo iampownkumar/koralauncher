@@ -6,6 +6,7 @@ import '../widgets/todo_list_card.dart';
 import 'todo_screen.dart';
 import 'usage_dashboard_screen.dart';
 import 'tide_pool_screen.dart';
+import 'permissions_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
 
@@ -233,6 +234,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildSwipeHint() {
     return GestureDetector(
       onTap: _openAppDrawer,
+      onLongPress: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const PermissionsAndPrivacyScreen()),
+        ).then((_) => _controller.refreshHomeState());
+      },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

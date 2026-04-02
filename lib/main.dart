@@ -9,6 +9,7 @@ import 'services/rising_tide_service.dart';
 import 'services/app_lock_manager.dart';
 import 'services/native_service.dart';
 import 'services/todo_service.dart';
+import 'widgets/onboarding_flow.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -126,7 +127,28 @@ class KoraLauncher extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       navigatorKey: navigatorKey,
-      home: const HomeScreen(),
+      home: StorageService.hasCompletedOnboarding()
+          ? const HomeScreen()
+          : _OnboardingGate(),
+    );
+  }
+}
+
+/// Shows onboarding on first launch, then replaces itself with HomeScreen.
+class _OnboardingGate extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return OnboardingFlow(
+      onComplete: () {
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (ctx, anim1, anim2) => const HomeScreen(),
+            transitionsBuilder: (ctx, anim, secAnim, child) =>
+                FadeTransition(opacity: anim, child: child),
+            transitionDuration: const Duration(milliseconds: 500),
+          ),
+        );
+      },
     );
   }
 }
