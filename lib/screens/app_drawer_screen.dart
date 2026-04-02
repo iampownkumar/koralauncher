@@ -6,6 +6,7 @@ import '../services/usage_service.dart';
 import '../services/native_service.dart';
 import '../widgets/app_list_item.dart';
 import '../widgets/app_long_press_menu.dart';
+import '../widgets/accessibility_disclosure_sheet.dart';
 import 'interception_screen.dart';
 import 'dart:ui';
 
@@ -159,7 +160,11 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
                       ),
                     ),
                     // Space for keyboard when resizeToAvoidBottomInset is false
-                    Padding(padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom)),
+                    Padding(
+                      padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).viewInsets.bottom,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -221,6 +226,16 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
           isFlagged: isFlagged,
           usage: usage,
           onFlagTap: () async {
+            // Gate: Accessibility permission required for Rising Tide flagging.
+            // If not granted, show the disclosure sheet (same as onboarding).
+            final hasAccess = await NativeService.hasAccessibilityPermission();
+            if (!hasAccess) {
+              if (!context.mounted) return;
+              // ignore: use_build_context_synchronously
+              await AccessibilityDisclosureSheet.show(context);
+              if (mounted) setState(() {});
+              return;
+            }
             await StorageService.toggleFlaggedApp(app.packageName);
             if (mounted) setState(() {});
           },

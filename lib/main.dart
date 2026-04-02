@@ -13,7 +13,7 @@ import 'widgets/onboarding_flow.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   FlutterError.onError = (details) {
     debugPrint("FlutterError: ${details.exceptionAsString()}");
   };
@@ -48,9 +48,9 @@ class _KoraStartupShellState extends State<KoraStartupShell> {
       await LauncherService.init();
       await UsageService.refreshUsage();
       await TodoService.init();
-      
+
       await RisingTideService.syncInterceptionState();
-      
+
       NativeService.initMethodCallHandler();
 
       debugPrint("KoraLauncher: Hydration complete. Launching main app.");
@@ -101,7 +101,7 @@ class _KoraStartupShellState extends State<KoraStartupShell> {
         ),
       );
     }
-    
+
     if (!_initialized) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,

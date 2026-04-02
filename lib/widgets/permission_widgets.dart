@@ -67,8 +67,11 @@ class PermissionStatusCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Icon(icon,
-                    color: isEnabled ? Colors.cyanAccent : Colors.white38, size: 22),
+                Icon(
+                  icon,
+                  color: isEnabled ? Colors.cyanAccent : Colors.white38,
+                  size: 22,
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -103,7 +106,9 @@ class PermissionStatusCard extends StatelessWidget {
                       Row(
                         children: [
                           Icon(
-                            isEnabled ? Icons.check_circle_outline : Icons.arrow_forward_ios,
+                            isEnabled
+                                ? Icons.check_circle_outline
+                                : Icons.arrow_forward_ios,
                             color: isEnabled
                                 ? Colors.cyanAccent.withValues(alpha: 0.7)
                                 : Colors.white24,
@@ -111,7 +116,9 @@ class PermissionStatusCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            isEnabled ? actionLabel : 'Tap to $actionLabel'.toLowerCase(),
+                            isEnabled
+                                ? actionLabel
+                                : 'Tap to $actionLabel'.toLowerCase(),
                             style: TextStyle(
                               color: isEnabled
                                   ? Colors.cyanAccent.withValues(alpha: 0.7)
@@ -219,8 +226,9 @@ class SettingsPermissionRow extends StatelessWidget {
                       Text(
                         subtitle,
                         style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.4),
-                            fontSize: 12),
+                          color: Colors.white.withValues(alpha: 0.4),
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -228,11 +236,7 @@ class SettingsPermissionRow extends StatelessWidget {
                 const SizedBox(width: 12),
                 _StatusChip(isEnabled: isEnabled),
                 const SizedBox(width: 8),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: Colors.white24,
-                  size: 13,
-                ),
+                Icon(Icons.arrow_forward_ios, color: Colors.white24, size: 13),
               ],
             ),
           ),

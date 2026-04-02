@@ -33,8 +33,10 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
     super.initState();
     _currentLimit = widget.initialLimitMinutes.clamp(1, 1440);
     _limitController = TextEditingController(text: _currentLimit.toString());
-    _intentionController = TextEditingController(text: widget.initialIntention ?? '');
-    
+    _intentionController = TextEditingController(
+      text: widget.initialIntention ?? '',
+    );
+
     _limitController.addListener(() {
       final val = int.tryParse(_limitController.text);
       if (val != null && val != _currentLimit) {
@@ -106,7 +108,7 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 32),
-                
+
                 // Time Display Section
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -121,7 +123,11 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                         style: TextStyle(
                           fontSize: 48,
                           fontWeight: FontWeight.w900,
-                          color: hard ? Colors.deepOrange.shade300 : soft ? Colors.amber.shade300 : Colors.white,
+                          color: hard
+                              ? Colors.deepOrange.shade300
+                              : soft
+                              ? Colors.amber.shade300
+                              : Colors.white,
                           letterSpacing: -1,
                         ),
                         decoration: const InputDecoration(
@@ -152,7 +158,7 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                
+
                 if (soft) ...[
                   const SizedBox(height: 20),
                   Container(
@@ -172,7 +178,9 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                       children: [
                         Icon(
                           Icons.warning_amber_rounded,
-                          color: hard ? Colors.deepOrange.shade300 : Colors.amber.shade300,
+                          color: hard
+                              ? Colors.deepOrange.shade300
+                              : Colors.amber.shade300,
                           size: 20,
                         ),
                         const SizedBox(width: 12),
@@ -192,7 +200,7 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                     ),
                   ),
                 ],
-                
+
                 const SizedBox(height: 32),
                 Text(
                   'NOTATION (OPTIONAL)',
@@ -211,7 +219,9 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                   style: const TextStyle(color: Colors.white, fontSize: 16),
                   decoration: InputDecoration(
                     hintText: 'Why do you need this app today?',
-                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2)),
+                    hintStyle: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
                     filled: true,
                     counterStyle: const TextStyle(color: Colors.white24),
                     fillColor: Colors.white.withValues(alpha: 0.04),
@@ -226,18 +236,20 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                   onPressed: () async {
                     final limit = _currentLimit;
                     if (LimitTimeFormat.needsHighLimitConfirm(limit)) {
-                      final ok = await showHighLimitConfirmDialog(context, limit);
+                      final ok = await showHighLimitConfirmDialog(
+                        context,
+                        limit,
+                      );
                       if (!ok || !context.mounted) return;
                     }
                     final text = _intentionController.text.trim();
-                    await widget.onApply(
-                      limit,
-                      text.isEmpty ? null : text,
-                    );
+                    await widget.onApply(limit, text.isEmpty ? null : text);
                     if (context.mounted) Navigator.of(context).pop();
                   },
                   style: FilledButton.styleFrom(
-                    backgroundColor: hard ? Colors.deepOrange.shade700 : Colors.white,
+                    backgroundColor: hard
+                        ? Colors.deepOrange.shade700
+                        : Colors.white,
                     foregroundColor: hard ? Colors.white : Colors.black,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(
@@ -247,7 +259,10 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                   ),
                   child: Text(
                     hard ? 'Confirm & Save' : 'Set Limit',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -255,7 +270,9 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                   onPressed: () => Navigator.of(context).pop(),
                   child: Text(
                     'Cancel',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.45)),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.45),
+                    ),
                   ),
                 ),
               ],

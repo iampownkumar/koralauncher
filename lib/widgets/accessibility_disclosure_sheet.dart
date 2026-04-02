@@ -33,7 +33,8 @@ class AccessibilityDisclosureSheet extends StatelessWidget {
           children: [
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                   color: Colors.white24,
                   borderRadius: BorderRadius.circular(2),
@@ -46,15 +47,20 @@ class AccessibilityDisclosureSheet extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  width: 44, height: 44,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: Colors.cyanAccent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                        color: Colors.cyanAccent.withValues(alpha: 0.3)),
+                      color: Colors.cyanAccent.withValues(alpha: 0.3),
+                    ),
                   ),
-                  child: const Icon(Icons.security_outlined,
-                      color: Colors.cyanAccent, size: 22),
+                  child: const Icon(
+                    Icons.security_outlined,
+                    color: Colors.cyanAccent,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 const Expanded(
@@ -91,13 +97,15 @@ class AccessibilityDisclosureSheet extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(12),
-                border:
-                    Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.shield_outlined,
-                      color: Colors.white38, size: 16),
+                  const Icon(
+                    Icons.shield_outlined,
+                    color: Colors.white38,
+                    size: 16,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -126,7 +134,8 @@ class AccessibilityDisclosureSheet extends StatelessWidget {
                       side: const BorderSide(color: Colors.white24),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: const Text('Not now'),
                   ),
@@ -143,7 +152,8 @@ class AccessibilityDisclosureSheet extends StatelessWidget {
                       foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: const Text(
                       'I understand',
@@ -158,7 +168,9 @@ class AccessibilityDisclosureSheet extends StatelessWidget {
               child: Text(
                 'After enabling, return to Kora.',
                 style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.3), fontSize: 12),
+                  color: Colors.white.withValues(alpha: 0.3),
+                  fontSize: 12,
+                ),
               ),
             ),
           ],

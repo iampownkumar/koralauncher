@@ -46,7 +46,9 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
 
     List<AppInfo> displayApps;
     if (_searchQuery.isEmpty) {
-      displayApps = allApps.where((a) => flagged.contains(a.packageName)).toList();
+      displayApps = allApps
+          .where((a) => flagged.contains(a.packageName))
+          .toList();
     } else {
       displayApps = allApps
           .where((app) => app.name.toLowerCase().contains(_searchQuery))
@@ -60,15 +62,20 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
         }
       },
       child: Scaffold(
-        floatingActionButton: _searchQuery.isEmpty ? FloatingActionButton.extended(
-          onPressed: () {
-            FocusScope.of(context).requestFocus(_searchFocusNode);
-          },
-          label: const Text('Add App to Flag', style: TextStyle(fontWeight: FontWeight.bold)),
-          icon: const Icon(Icons.add),
-          backgroundColor: Colors.cyan.withValues(alpha: 0.8),
-          foregroundColor: Colors.black,
-        ) : null,
+        floatingActionButton: _searchQuery.isEmpty
+            ? FloatingActionButton.extended(
+                onPressed: () {
+                  FocusScope.of(context).requestFocus(_searchFocusNode);
+                },
+                label: const Text(
+                  'Add App to Flag',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                icon: const Icon(Icons.add),
+                backgroundColor: Colors.cyan.withValues(alpha: 0.8),
+                foregroundColor: Colors.black,
+              )
+            : null,
         body: Container(
           width: double.infinity,
           height: double.infinity,
@@ -95,7 +102,10 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back_ios, color: Colors.white70),
+                        icon: const Icon(
+                          Icons.arrow_back_ios,
+                          color: Colors.white70,
+                        ),
                         onPressed: () => Navigator.pop(context),
                       ),
                       const Expanded(
@@ -115,7 +125,10 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 12,
+                  ),
                   child: Text(
                     'What you give attention to, grows.\n'
                     'Use this side when you want a pause before the scroll.',
@@ -129,18 +142,30 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                 ),
                 // Search Field
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 8,
+                  ),
                   child: TextField(
                     controller: _searchController,
                     focusNode: _searchFocusNode,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: 'Search any app to flag...',
-                      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
-                      prefixIcon: const Icon(Icons.search, color: Colors.white38),
+                      hintStyle: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.3),
+                      ),
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: Colors.white38,
+                      ),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
-                              icon: const Icon(Icons.close, color: Colors.white38, size: 18),
+                              icon: const Icon(
+                                Icons.close,
+                                color: Colors.white38,
+                                size: 18,
+                              ),
                               onPressed: () {
                                 _searchController.clear();
                                 _searchFocusNode.unfocus();
@@ -161,7 +186,10 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.35),
                       borderRadius: BorderRadius.circular(16),
@@ -169,7 +197,11 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.waves, color: Colors.cyanAccent, size: 28),
+                        const Icon(
+                          Icons.waves,
+                          color: Colors.cyanAccent,
+                          size: 28,
+                        ),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(
@@ -243,36 +275,56 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                             final app = displayApps[i];
                             final pkg = app.packageName;
                             final isFlagged = StorageService.isAppFlagged(pkg);
-                            final limit = StorageService.getAppDailyLimitMinutes(pkg);
-                            final usedMinutes = UsageService.getRoundedMinutesToday(pkg);
-                            final remaining = (limit - usedMinutes).clamp(0, limit);
+                            final limit =
+                                StorageService.getAppDailyLimitMinutes(pkg);
+                            final usedMinutes =
+                                UsageService.getRoundedMinutesToday(pkg);
+                            final remaining = (limit - usedMinutes).clamp(
+                              0,
+                              limit,
+                            );
                             final progress = limit > 0
                                 ? (usedMinutes / limit).clamp(0.0, 1.0)
                                 : 0.0;
                             return Card(
-                              color: isFlagged 
+                              color: isFlagged
                                   ? Colors.cyan.withValues(alpha: 0.08)
                                   : Colors.white.withValues(alpha: 0.04),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
                                 side: BorderSide(
-                                  color: isFlagged ? Colors.cyan.withValues(alpha: 0.3) : Colors.white10,
+                                  color: isFlagged
+                                      ? Colors.cyan.withValues(alpha: 0.3)
+                                      : Colors.white10,
                                 ),
                               ),
                               child: ListTile(
-                                leading: isFlagged 
-                                    ? const Icon(Icons.waves, color: Colors.cyanAccent, size: 20)
-                                    : const Icon(Icons.waves, color: Colors.white24, size: 20),
+                                leading: isFlagged
+                                    ? const Icon(
+                                        Icons.waves,
+                                        color: Colors.cyanAccent,
+                                        size: 20,
+                                      )
+                                    : const Icon(
+                                        Icons.waves,
+                                        color: Colors.white24,
+                                        size: 20,
+                                      ),
                                 title: Text(
                                   app.name,
                                   style: TextStyle(
-                                    color: isFlagged ? Colors.white : Colors.white70,
-                                    fontWeight: isFlagged ? FontWeight.w600 : FontWeight.w400,
+                                    color: isFlagged
+                                        ? Colors.white
+                                        : Colors.white70,
+                                    fontWeight: isFlagged
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
                                   ),
                                 ),
                                 subtitle: isFlagged
                                     ? Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           const SizedBox(height: 4),
                                           Text(
@@ -280,52 +332,70 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                                                 ? '${usedMinutes}m used · ${remaining}m left of ${LimitTimeFormat.dualLabel(limit)}'
                                                 : 'Limit: ${LimitTimeFormat.dualLabel(limit)} · Not used today',
                                             style: TextStyle(
-                                              color: Colors.white.withValues(alpha: 0.45),
+                                              color: Colors.white.withValues(
+                                                alpha: 0.45,
+                                              ),
                                               fontSize: 12,
                                             ),
                                           ),
                                           const SizedBox(height: 6),
                                           ClipRRect(
-                                            borderRadius: BorderRadius.circular(4),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
                                             child: LinearProgressIndicator(
                                               value: progress,
                                               minHeight: 3,
                                               backgroundColor: Colors.white12,
-                                              valueColor: AlwaysStoppedAnimation<Color>(
-                                                progress >= 1.0
-                                                    ? Colors.redAccent
-                                                    : progress >= 0.5
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                    progress >= 1.0
+                                                        ? Colors.redAccent
+                                                        : progress >= 0.5
                                                         ? Colors.orange
                                                         : Colors.cyanAccent,
-                                              ),
+                                                  ),
                                             ),
                                           ),
                                         ],
                                       )
                                     : Text(
                                         'Not flagged',
-                                        style: TextStyle(color: Colors.white.withValues(alpha: 0.25)),
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.25,
+                                          ),
+                                        ),
                                       ),
                                 trailing: isFlagged
                                     ? IconButton(
-                                        icon: const Icon(Icons.tune, color: Colors.white54),
+                                        icon: const Icon(
+                                          Icons.tune,
+                                          color: Colors.white54,
+                                        ),
                                         onPressed: () {
                                           showModalBottomSheet<void>(
                                             context: context,
                                             isScrollControlled: true,
                                             backgroundColor: Colors.transparent,
-                                            builder: (context) => DailyLimitSheet(
-                                              packageName: app.packageName,
-                                              appLabel: app.name,
-                                              initialLimitMinutes: limit,
-                                            ),
+                                            builder: (context) =>
+                                                DailyLimitSheet(
+                                                  packageName: app.packageName,
+                                                  appLabel: app.name,
+                                                  initialLimitMinutes: limit,
+                                                ),
                                           );
                                         },
                                       )
                                     : IconButton(
-                                        icon: const Icon(Icons.add_circle_outline, color: Colors.white38),
+                                        icon: const Icon(
+                                          Icons.add_circle_outline,
+                                          color: Colors.white38,
+                                        ),
                                         onPressed: () async {
-                                          await StorageService.toggleFlaggedApp(pkg);
+                                          await StorageService.toggleFlaggedApp(
+                                            pkg,
+                                          );
                                           if (mounted) setState(() {});
                                         },
                                       ),

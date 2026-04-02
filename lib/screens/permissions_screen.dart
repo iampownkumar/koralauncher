@@ -3,6 +3,7 @@ import '../services/native_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/accessibility_disclosure_sheet.dart';
 import '../widgets/permission_widgets.dart';
+import '../widgets/permission_gate_card.dart';
 
 /// Full-page settings screen: Rising Tide master switch, permissions, privacy.
 /// Accessible from home screen or any deep-link entry point.
@@ -85,7 +86,10 @@ class _PermissionsAndPrivacyScreenState
         title: const Text(
           'Permissions & Privacy',
           style: TextStyle(
-              color: Colors.white, fontWeight: FontWeight.w300, fontSize: 18),
+            color: Colors.white,
+            fontWeight: FontWeight.w300,
+            fontSize: 18,
+          ),
         ),
         centerTitle: true,
       ),
@@ -94,47 +98,74 @@ class _PermissionsAndPrivacyScreenState
           // ── Rising Tide ─────────────────────────────────────
           const SectionHeader('Rising Tide', topPad: 12),
           Container(
-            margin:
-                const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: _risingTideMaster
-                    ? Colors.cyanAccent.withValues(alpha: 0.3)
-                    : Colors.white.withValues(alpha: 0.08),
+                color: !_hasAccessibility
+                    ? Colors.white.withValues(alpha: 0.06) // muted when locked
+                    : _risingTideMaster
+                        ? Colors.cyanAccent.withValues(alpha: 0.3)
+                        : Colors.white.withValues(alpha: 0.08),
               ),
             ),
             child: SwitchListTile(
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-              title: const Text(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 4,
+              ),
+              title: Text(
                 'Rising Tide',
                 style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.w600),
+                  color: _hasAccessibility ? Colors.white : Colors.white38,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               subtitle: Text(
-                'Pause before opening flagged apps.',
+                _hasAccessibility
+                    ? 'Pause before opening flagged apps.'
+                    : 'Accessibility permission required.',
                 style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.45),
-                    fontSize: 13),
+                  color: Colors.white.withValues(
+                    alpha: _hasAccessibility ? 0.45 : 0.25,
+                  ),
+                  fontSize: 13,
+                ),
               ),
-              value: _risingTideMaster,
+              // Force OFF and non-interactive when accessibility is missing
+              value: _hasAccessibility && _risingTideMaster,
               activeThumbColor: Colors.cyanAccent,
               activeTrackColor: Colors.cyan.withValues(alpha: 0.4),
               inactiveThumbColor: Colors.white38,
               inactiveTrackColor: Colors.white12,
-              onChanged: _toggleMaster,
+              onChanged: _hasAccessibility ? _toggleMaster : null,
             ),
           ),
-          if (!_risingTideMaster)
+          if (_hasAccessibility && !_risingTideMaster)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 22),
               child: Text(
                 'Rising Tide is off. Flagged apps will open normally.',
                 style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.3),
-                    fontSize: 12),
+                  color: Colors.white.withValues(alpha: 0.3),
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          if (!_hasAccessibility)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+              child: PermissionGateCard(
+                icon: Icons.security_outlined,
+                title: 'Enable Accessibility',
+                body:
+                    'Accessibility permission is required to use Rising Tide focus protection.',
+                buttonLabel: 'Enable Accessibility',
+                onButton: () async {
+                  await AccessibilityDisclosureSheet.show(context);
+                  await _refreshPermissions();
+                },
               ),
             ),
 
@@ -164,7 +195,8 @@ class _PermissionsAndPrivacyScreenState
           ),
           SettingsPermissionRow(
             title: 'Accessibility',
-            subtitle: 'Used only for Rising Tide interception on apps you flag.',
+            subtitle:
+                'Used only for Rising Tide interception on apps you flag.',
             isEnabled: _hasAccessibility,
             buttonLabel: _hasAccessibility ? 'Manage' : 'Enable',
             onTap: _accessibilityTapped,
@@ -174,7 +206,10 @@ class _PermissionsAndPrivacyScreenState
             child: Text(
               'These controls are optional. You can turn them on or off anytime in Android settings.',
               style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.3), fontSize: 12, height: 1.5),
+                color: Colors.white.withValues(alpha: 0.3),
+                fontSize: 12,
+                height: 1.5,
+              ),
             ),
           ),
 

@@ -6,6 +6,7 @@ import '../widgets/app_list_item.dart';
 import '../services/storage_service.dart';
 import '../services/native_service.dart';
 import '../widgets/app_long_press_menu.dart';
+import '../widgets/permission_gate_card.dart';
 import 'interception_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
 
@@ -16,9 +17,11 @@ class UsageDashboardScreen extends StatefulWidget {
   State<UsageDashboardScreen> createState() => _UsageDashboardScreenState();
 }
 
-class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
+class _UsageDashboardScreenState extends State<UsageDashboardScreen>
+    with WidgetsBindingObserver {
   List<AppInfo> _sortedApps = [];
   bool _isLoading = true;
+  bool _hasUsagePermission = true; // optimistic until first check
 
   int _roundedMinutesForApp(String packageName) {
     return (UsageService.getAppUsage(packageName).inMilliseconds + 30000) ~/ 60000;
@@ -31,10 +34,33 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadDashBoardData();
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Re-check when user returns from Usage Access settings
+    if (state == AppLifecycleState.resumed) {
+      _loadDashBoardData();
+    }
+  }
+
   Future<void> _loadDashBoardData() async {
+    final hasPermission = await NativeService.hasUsagePermission();
+    if (mounted && !hasPermission) {
+      setState(() {
+        _hasUsagePermission = false;
+        _isLoading = false;
+      });
+      return;
+    }
     await UsageService.refreshUsage();
 
     // Grab all launchable apps
@@ -52,6 +78,7 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
 
     if (mounted) {
       setState(() {
+        _hasUsagePermission = true;
         _sortedApps = apps
             .where((app) => _roundedMinutesForApp(app.packageName) >= 1)
             .toList();
@@ -74,7 +101,7 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.black, // Dark minimalism
+        backgroundColor: Colors.black,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -91,6 +118,17 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen> {
             ? const Center(
                 child: CircularProgressIndicator(color: Colors.white24),
               )
+            : !_hasUsagePermission
+                ? PermissionGateCard(
+                    icon: Icons.bar_chart_outlined,
+                    title: 'Enable Usage Access',
+                    body:
+                        'Usage Access is needed for screen time, app usage stats, and daily limits.',
+                    buttonLabel: 'Open Usage Access',
+                    onButton: () async {
+                      await NativeService.openUsageSettings();
+                    },
+                  )
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
