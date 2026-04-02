@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:installed_apps/app_info.dart';
 import '../services/storage_service.dart';
 import '../services/launcher_service.dart';
+import '../services/usage_service.dart';
 import '../utils/limit_time_format.dart';
 import '../widgets/daily_limit_sheet.dart';
 import '../widgets/app_long_press_menu.dart';
@@ -234,6 +235,11 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                             final pkg = app.packageName;
                             final isFlagged = StorageService.isAppFlagged(pkg);
                             final limit = StorageService.getAppDailyLimitMinutes(pkg);
+                            final usedMinutes = UsageService.getRoundedMinutesToday(pkg);
+                            final remaining = (limit - usedMinutes).clamp(0, limit);
+                            final progress = limit > 0
+                                ? (usedMinutes / limit).clamp(0.0, 1.0)
+                                : 0.0;
                             return Card(
                               color: isFlagged 
                                   ? Colors.cyan.withValues(alpha: 0.08)
@@ -256,9 +262,36 @@ class _TidePoolScreenState extends State<TidePoolScreen> {
                                   ),
                                 ),
                                 subtitle: isFlagged
-                                    ? Text(
-                                        'Limit ${LimitTimeFormat.dualLabel(limit)}',
-                                        style: TextStyle(color: Colors.white.withValues(alpha: 0.45)),
+                                    ? Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            usedMinutes > 0
+                                                ? '${usedMinutes}m used · ${remaining}m left of ${LimitTimeFormat.dualLabel(limit)}'
+                                                : 'Limit: ${LimitTimeFormat.dualLabel(limit)} · Not used today',
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(alpha: 0.45),
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(4),
+                                            child: LinearProgressIndicator(
+                                              value: progress,
+                                              minHeight: 3,
+                                              backgroundColor: Colors.white12,
+                                              valueColor: AlwaysStoppedAnimation<Color>(
+                                                progress >= 1.0
+                                                    ? Colors.redAccent
+                                                    : progress >= 0.5
+                                                        ? Colors.orange
+                                                        : Colors.cyanAccent,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       )
                                     : Text(
                                         'Not flagged',

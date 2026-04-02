@@ -285,6 +285,16 @@ class KoraDatabase extends _$KoraDatabase {
   Future<void> deleteTodo(int id) =>
       (delete(todos)..where((t) => t.id.equals(id))).go();
 
+  Future<void> updateTodoTitle(int id, String newTitle) =>
+      (update(todos)..where((t) => t.id.equals(id))).write(
+        TodosCompanion(title: Value(newTitle)),
+      );
+
+  Future<void> updateTodoPriority(int id, int priority) =>
+      (update(todos)..where((t) => t.id.equals(id))).write(
+        TodosCompanion(priority: Value(priority)),
+      );
+
   Future<Intention?> getTodayIntention() async {
     final today = DateTime.now();
     final start = DateTime(today.year, today.month, today.day);
