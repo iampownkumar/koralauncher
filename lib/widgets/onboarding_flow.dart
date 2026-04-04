@@ -5,6 +5,7 @@ import '../database/database_provider.dart';
 import '../services/rising_tide_service.dart';
 import 'accessibility_disclosure_sheet.dart';
 import 'permission_widgets.dart';
+import 'package:flutter/services.dart';
 
 /// 4-page onboarding: Welcome → Intention → Permissions → Done.
 /// Persists current page so Android activity restarts (e.g. when setting
@@ -114,6 +115,12 @@ class _OnboardingFlowState extends State<OnboardingFlow>
   }
 
   Future<void> _finish() async {
+    try {
+      final data = await rootBundle.load('assets/korelium-launcher.png');
+      await NativeService.setSystemWallpaper(data.buffer.asUint8List());
+    } catch (e) {
+      debugPrint('Failed to set onboarding wallpaper: $e');
+    }
     await StorageService.completeOnboarding(); // also clears the step key
     widget.onComplete();
   }
@@ -490,7 +497,7 @@ class _DonePage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              'Start simple.\nYou can enable more controls anytime.',
+              'Start simple.\nKora will set its focused wallpaper to your home and lock screen to reduce visual clutter.\n\nYou can enable more controls anytime.',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.5),
                 fontSize: 16,

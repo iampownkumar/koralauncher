@@ -137,4 +137,7 @@ class StorageService {
   static Future<void> setOnboardingStep(int step) async {
     await _prefs.setInt('onboarding_step', step);
   }
+  static Future<void> reloadPrefs() async {
+    await _prefs.reload();
+  }
 }

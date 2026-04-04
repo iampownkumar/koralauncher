@@ -68,14 +68,20 @@ class _TidePoolScreenState extends State<TidePoolScreen>
           .where((a) => flagged.contains(a.packageName))
           .toList();
     } else {
+      final cleanQuery = _searchQuery.replaceAll(' ', '');
       displayApps = allApps
-          .where((app) => app.name.toLowerCase().contains(_searchQuery))
+          .where((app) {
+            final cleanName = app.name.toLowerCase().replaceAll(' ', '');
+            final pkg = app.packageName.toLowerCase();
+            return cleanName.contains(cleanQuery) || pkg.contains(cleanQuery);
+          })
           .toList();
     }
 
     return GestureDetector(
+      behavior: HitTestBehavior.translucent,
       onHorizontalDragEnd: (details) {
-        if (details.primaryVelocity != null && details.primaryVelocity! > 300) {
+        if (details.primaryVelocity != null && details.primaryVelocity! < -150) {
           Navigator.pop(context);
         }
       },
@@ -495,7 +501,7 @@ class _TidePoolScreenState extends State<TidePoolScreen>
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Text(
-                    'Swipe right to return home',
+                    'Swipe left to return home',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.35),

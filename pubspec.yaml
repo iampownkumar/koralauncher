@@ -1,7 +1,7 @@
 name: koralauncher
 description: "Kora — A launcher that asks why. Behavioral screen-time control for Android."
 publish_to: 'none'
-version: 1.0.7+7
+version: 1.0.9+9
 
 environment:
   sdk: ^3.11.3
@@ -29,6 +29,9 @@ dependencies:
   device_info_plus: ^12.3.0     # device/SDK version checks
   url_launcher: ^6.3.2          # opens URLs from within the app
   upgrader: ^11.1.0             # Play Store update detection
+  sentry_flutter: ^9.16.0
+  dynamic_color: ^1.8.1
+  image_picker: ^1.2.1
 
 dev_dependencies:
   flutter_test:
@@ -43,6 +46,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icon.png
+    - assets/korelium-launcher.png
 
 flutter_launcher_icons:
   android: "launcher_icon"

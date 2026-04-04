@@ -1,4 +1,7 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'app_navigator.dart';
 import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
@@ -11,15 +14,29 @@ import 'services/native_service.dart';
 import 'services/todo_service.dart';
 import 'widgets/onboarding_flow.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  FlutterError.onError = (details) {
-    debugPrint("FlutterError: ${details.exceptionAsString()}");
-  };
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = 'YOUR_SENTRY_DSN_HERE'; 
+      options.tracesSampleRate = 1.0;
+    },
+    appRunner: () {
+      FlutterError.onError = (details) {
+        debugPrint("FlutterError: ${details.exceptionAsString()}");
+        Sentry.captureException(details.exception, stackTrace: details.stack);
+      };
 
-  debugPrint("KoraLauncher: Starting minimal shell...");
-  runApp(const KoraStartupShell());
+      PlatformDispatcher.instance.onError = (error, stack) {
+        Sentry.captureException(error, stackTrace: stack);
+        return true;
+      };
+
+      debugPrint("KoraLauncher: Starting minimal shell...");
+      runApp(const KoraStartupShell());
+    },
+  );
 }
 
 class KoraStartupShell extends StatefulWidget {
@@ -73,43 +90,51 @@ class _KoraStartupShellState extends State<KoraStartupShell> {
   @override
   Widget build(BuildContext context) {
     if (_hasError) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
-        home: Scaffold(
-          backgroundColor: Colors.black,
-          body: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: Text(
-                "Startup Error: $_errorMessage\n\nTap refresh to retry.",
-                style: const TextStyle(color: Colors.redAccent),
-                textAlign: TextAlign.center,
+      return DynamicColorBuilder(
+        builder: (lightDynamic, darkDynamic) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.getDarkTheme(colorScheme: darkDynamic),
+            home: Scaffold(
+              backgroundColor: Colors.black,
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Text(
+                    "Startup Error: $_errorMessage\n\nTap refresh to retry.",
+                    style: const TextStyle(color: Colors.redAccent),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              floatingActionButton: FloatingActionButton(
+                onPressed: () {
+                  setState(() {
+                    _hasError = false;
+                  });
+                  _hydrateData();
+                },
+                backgroundColor: Colors.redAccent,
+                child: const Icon(Icons.refresh, color: Colors.white),
               ),
             ),
-          ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () {
-              setState(() {
-                _hasError = false;
-              });
-              _hydrateData();
-            },
-            backgroundColor: Colors.redAccent,
-            child: const Icon(Icons.refresh, color: Colors.white),
-          ),
-        ),
+          );
+        },
       );
     }
 
     if (!_initialized) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
-        home: const Scaffold(
-          backgroundColor: Colors.black,
-          body: SizedBox(), // Pure black minimal shell
-        ),
+      return DynamicColorBuilder(
+        builder: (lightDynamic, darkDynamic) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.getDarkTheme(colorScheme: darkDynamic),
+            home: const Scaffold(
+              backgroundColor: Colors.transparent,
+              body: SizedBox(), // Transparent minimal shell
+            ),
+          );
+        },
       );
     }
 
@@ -122,14 +147,18 @@ class KoraLauncher extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Kora Launcher',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      navigatorKey: navigatorKey,
-      home: StorageService.hasCompletedOnboarding()
-          ? const HomeScreen()
-          : _OnboardingGate(),
+    return DynamicColorBuilder(
+      builder: (lightDynamic, darkDynamic) {
+        return MaterialApp(
+          title: 'Kora Launcher',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.getDarkTheme(colorScheme: darkDynamic),
+          navigatorKey: navigatorKey,
+          home: StorageService.hasCompletedOnboarding()
+              ? const HomeScreen()
+              : _OnboardingGate(),
+        );
+      },
     );
   }
 }

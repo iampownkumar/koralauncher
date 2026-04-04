@@ -170,4 +170,14 @@ class NativeService {
       print("NativeService Error: $e");
     }
   }
+
+  static Future<bool> setSystemWallpaper(Uint8List bytes) async {
+    try {
+      final success = await platform.invokeMethod<bool>('setSystemWallpaper', {'bytes': bytes});
+      return success ?? false;
+    } catch (e) {
+      debugPrint("Failed to set system wallpaper: $e");
+      return false;
+    }
+  }
 }

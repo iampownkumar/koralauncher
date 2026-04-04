@@ -55,21 +55,17 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
     });
   }
 
-  void _filterApps() {
-    final query = _searchController.text.toLowerCase();
-    setState(() {
-      _filteredApps = _apps.where((app) {
-        return app.name.toLowerCase().contains(query);
-      }).toList();
-    });
+  bool _isLaunching = false;
 
-    // Auto-launch if there's exactly one result and query is not empty
-    if (_filteredApps.length == 1 && query.isNotEmpty) {
-      final app = _filteredApps.first;
+  Future<void> _openApp(AppInfo app) async {
+    if (_isLaunching) return;
+    _isLaunching = true;
+    try {
       final isFlagged = StorageService.isAppFlagged(app.packageName);
 
       if (isFlagged) {
         _searchController.clear();
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
@@ -82,11 +78,33 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
           ),
         );
       } else {
-        LauncherService.launchApp(app.packageName).then((_) {
-          _searchController.clear();
-          if (mounted) Navigator.pop(context);
-        });
+        await LauncherService.launchApp(app.packageName);
+        _searchController.clear();
+        if (mounted) Navigator.pop(context);
       }
+    } catch (e) {
+      debugPrint("Error launching app: $e");
+    } finally {
+      if (mounted) {
+        _isLaunching = false;
+      }
+    }
+  }
+
+  void _filterApps() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredApps = _apps.where((app) {
+        return app.name.toLowerCase().contains(query);
+      }).toList();
+    });
+
+    if (_filteredApps.length == 1 && query.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _openApp(_filteredApps.first);
+        }
+      });
     }
   }
 
@@ -123,17 +141,14 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
         },
         child: Scaffold(
           resizeToAvoidBottomInset: false, // Prevent layout jumps
-          backgroundColor:
-              Colors.black, // Solid dark background to fix recents glitch
+          backgroundColor: Colors.transparent, 
           body: Stack(
             children: [
               // Dark Blur Background
               BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                 child: Container(
-                  color: Theme.of(
-                    context,
-                  ).scaffoldBackgroundColor.withValues(alpha: 0.85),
+                  color: Colors.black.withValues(alpha: 0.5),
                   width: double.infinity,
                   height: double.infinity,
                 ),
@@ -184,11 +199,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
         style: Theme.of(context).textTheme.bodyLarge,
         onSubmitted: (_) {
           if (_filteredApps.isNotEmpty) {
-            final app = _filteredApps.first;
-            LauncherService.launchApp(app.packageName).then((_) {
-              _searchController.clear();
-              if (mounted) Navigator.pop(context);
-            });
+            _openApp(_filteredApps.first);
           }
         },
         decoration: InputDecoration(
@@ -239,27 +250,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
             await StorageService.toggleFlaggedApp(app.packageName);
             if (mounted) setState(() {});
           },
-          onTap: () {
-            if (isFlagged) {
-              _searchController.clear();
-              Navigator.pushReplacement(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) =>
-                      InterceptionScreen(app: app),
-                  transitionsBuilder:
-                      (context, animation, secondaryAnimation, child) {
-                        return FadeTransition(opacity: animation, child: child);
-                      },
-                ),
-              );
-            } else {
-              LauncherService.launchApp(app.packageName).then((_) {
-                _searchController.clear();
-                if (mounted) Navigator.pop(context);
-              });
-            }
-          },
+          onTap: () => _openApp(app),
           onLongPress: () {
             showAppLongPressMenu(
               context,

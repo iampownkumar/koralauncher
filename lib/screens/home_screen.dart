@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import '../services/usage_service.dart';
 import '../services/native_service.dart';
 import '../services/storage_service.dart';
+import '../services/todo_service.dart';
 import 'app_drawer_screen.dart';
 import '../widgets/goal_setter.dart';
-import '../widgets/todo_list_card.dart';
 import 'todo_screen.dart';
 import 'usage_dashboard_screen.dart';
 import 'tide_pool_screen.dart';
 import 'permissions_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
+import '../wallpaper/wallpaper_service.dart';
 
 import 'package:upgrader/upgrader.dart';
 import 'package:intl/intl.dart';
@@ -73,176 +75,212 @@ class _HomeScreenState extends State<HomeScreen> {
           canPop: false,
           child: Scaffold(
             resizeToAvoidBottomInset: true,
-            backgroundColor: Colors.black,
-        body: Stack(
-          children: [
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                FocusManager.instance.primaryFocus?.unfocus();
-              },
-              onVerticalDragEnd: (details) {
-                if (details.primaryVelocity != null &&
-                    details.primaryVelocity! < -300) {
-                  _openAppDrawer();
-                }
-              },
-              onHorizontalDragEnd: (details) {
-                final velocity = details.primaryVelocity;
-                if (velocity != null) {
-                  if (velocity > 300) {
-                    Navigator.push(
-                      context,
-                      PageRouteBuilder(
-                        pageBuilder: (context, animation, secondaryAnimation) =>
-                            const UsageDashboardScreen(),
-                        transitionsBuilder:
-                            (context, animation, secondaryAnimation, child) {
-                              return FadeTransition(
-                                opacity: animation,
-                                child: child,
-                              );
-                            },
-                      ),
-                    );
-                  } else if (velocity < -300) {
-                    Navigator.push(
-                      context,
-                      PageRouteBuilder(
-                        pageBuilder: (context, animation, secondaryAnimation) =>
-                            const TidePoolScreen(),
-                        transitionDuration: const Duration(milliseconds: 340),
-                        transitionsBuilder:
-                            (context, animation, secondaryAnimation, child) {
-                              return SlideTransition(
-                                position:
-                                    Tween<Offset>(
-                                      begin: const Offset(1, 0),
-                                      end: Offset.zero,
-                                    ).animate(
-                                      CurvedAnimation(
-                                        parent: animation,
-                                        curve: Curves.easeOutCubic,
-                                      ),
-                                    ),
-                                child: child,
-                              );
-                            },
-                      ),
-                    ).then((_) => _controller.triggerRefresh());
-                  }
-                }
-              },
-              child: SizedBox(
-                width: double.infinity,
-                height: double.infinity,
-                child: SafeArea(
-                  child: SingleChildScrollView(
-                    child: SizedBox(
-                      height:
-                          MediaQuery.of(context).size.height -
-                          MediaQuery.of(context).padding.top -
-                          MediaQuery.of(context).padding.bottom,
-                      child: Column(
-                        children: [
-                          HomeBanners(controller: _controller),
-                          // Default launcher nudge — shown only after onboarding, until set
-                          if (StorageService.hasCompletedOnboarding() &&
-                              !_controller.isDefaultLauncher)
-                            _buildDefaultLauncherBanner(),
-                          _buildTopInfoBar(),
-
-                          // _buildGoalHeader() replaced by chip in top bar
-                          const SizedBox(height: 16),
-
-                          if (!_controller.showGoalSetter) ...[
-                            TodoListCard(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (c) => const TodoScreen(),
-                                  ),
-                                ).then((_) => _controller.triggerRefresh());
-                              },
-                            ),
+            backgroundColor: Colors.transparent,
+            body: Stack(
+              children: [
+                if (_controller.wallpaperPath != null)
+                  Positioned.fill(
+                    child: Image.file(
+                      File(_controller.wallpaperPath!),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.6),
+                            Colors.transparent,
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.5),
                           ],
-
-                          const Spacer(),
-
-                          _buildTimeAndDate(),
-                          const SizedBox(height: 24),
-
-                          _buildQuickAccessDock(),
-                          const SizedBox(height: 16),
-
-                          _buildSwipeHint(),
-                        ],
+                          stops: const [0.0, 0.2, 0.8, 1.0],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    FocusManager.instance.primaryFocus?.unfocus();
+                  },
+                  onLongPress: () {
+                    WallpaperService.openWallpaperPicker();
+                  },
+                  onVerticalDragEnd: (details) {
+                    if (details.primaryVelocity != null &&
+                        details.primaryVelocity! < -300) {
+                      _openAppDrawer();
+                    }
+                  },
+                  onHorizontalDragEnd: (details) {
+                    final velocity = details.primaryVelocity;
+                    if (velocity != null) {
+                      if (velocity > 300) {
+                        Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    const TidePoolScreen(),
+                            transitionDuration: Duration.zero,
+                            reverseTransitionDuration: Duration.zero,
+                          ),
+                        ).then((_) => _controller.triggerRefresh());
+                      } else if (velocity < -300) {
+                        Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            pageBuilder:
+                                (context, animation, secondaryAnimation) =>
+                                    const TodoScreen(),
+                            transitionDuration: Duration.zero,
+                            reverseTransitionDuration: Duration.zero,
+                          ),
+                        ).then((_) => _controller.triggerRefresh());
+                      }
+                    }
+                  },
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: double.infinity,
+                    child: SafeArea(
+                      child: SingleChildScrollView(
+                        child: SizedBox(
+                          height:
+                              MediaQuery.of(context).size.height -
+                              MediaQuery.of(context).padding.top -
+                              MediaQuery.of(context).padding.bottom,
+                          child: Column(
+                            children: [
+                              HomeBanners(controller: _controller),
+                              if (StorageService.hasCompletedOnboarding() &&
+                                  !_controller.isDefaultLauncher &&
+                                  !_controller.hideDefaultLauncherBanner)
+                                _buildDefaultLauncherBanner(),
+                              _buildTopInfoBar(),
 
-            if (_controller.showGoalSetter)
-              GoalSetter(
-                initialGoal: _controller.goal,
-                onDismiss: _controller.dismissGoalSetter,
-                onGoalSet: _controller.onGoalSet,
-              ),
-            UpgradeAlert(
-              showIgnore: false,
-              showLater: true,
-              dialogStyle: UpgradeDialogStyle.material,
-              child: const SizedBox.shrink(),
+                              const SizedBox(height: 16),
+
+                              if (!_controller.showGoalSetter) ...[
+                                _buildTinyTodoChip(),
+                              ],
+
+                              const Spacer(flex: 3),
+
+                              _buildTimeAndDate(),
+                              const SizedBox(
+                                height: 20,
+                              ), //change here for space the time  widget
+
+                              _buildQuickAccessDock(),
+                              const SizedBox(height: 7),
+
+                              _buildSwipeHint(),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                if (_controller.showGoalSetter)
+                  GoalSetter(
+                    initialGoal: _controller.goal,
+                    onDismiss: _controller.dismissGoalSetter,
+                    onGoalSet: _controller.onGoalSet,
+                  ),
+
+                UpgradeAlert(
+                  showIgnore: false,
+                  showLater: true,
+                  dialogStyle: UpgradeDialogStyle.material,
+                  child: const SizedBox.shrink(),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
         );
       },
     );
   }
 
-  Widget _buildDefaultLauncherBanner() {
+  Widget _buildTinyTodoChip() {
+    final todos = TodoService.todos;
+    final pending = todos.where((t) => !t.isCompleted).length;
+
     return GestureDetector(
-      onTap: () => NativeService.openDefaultLauncherSettings(),
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-        decoration: BoxDecoration(
-          color: Colors.cyanAccent.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: Colors.cyanAccent.withValues(alpha: 0.3),
+      onTap: () {
+        Navigator.push(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (c, a, s) => const TodoScreen(),
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
           ),
+        ).then((_) => _controller.triggerRefresh());
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
         ),
-        child: Row(
-          children: [
-            const Icon(Icons.home_outlined, color: Colors.cyanAccent, size: 18),
-            const SizedBox(width: 10),
-            const Expanded(
-              child: Text(
-                'Set Kora as default launcher to keep it as your home screen.',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  height: 1.4,
-                ),
+        child: Text(
+          '$pending tasks today',
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultLauncherBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+      decoration: BoxDecoration(
+        color: Colors.cyanAccent.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.home_outlined, color: Colors.cyanAccent, size: 18),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Text(
+              'Set Kora as default launcher to keep it as your home screen.',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+                height: 1.4,
               ),
             ),
-            const SizedBox(width: 8),
-            const Text(
-              'Set now →',
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () => NativeService.openDefaultLauncherSettings(),
+            child: const Text(
+              'Set now',
               style: TextStyle(
                 color: Colors.cyanAccent,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 12),
+          GestureDetector(
+            onTap: () => _controller.dismissDefaultLauncherBanner(),
+            child: const Icon(Icons.close, color: Colors.white70, size: 16),
+          ),
+        ],
       ),
     );
   }
@@ -255,22 +293,36 @@ class _HomeScreenState extends State<HomeScreen> {
         return Column(
           children: [
             Text(
-              DateFormat('HH:mm:ss').format(now),
+              DateFormat('HH:mm:ss').format(now), // to add seconds
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 52,
-                fontWeight: FontWeight.w200,
+                fontSize: 42,
+                fontWeight: FontWeight.w300,
                 letterSpacing: 2,
+                shadows: [
+                  Shadow(
+                    color: Colors.black45,
+                    blurRadius: 10,
+                    offset: Offset(0, 2),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 4),
             Text(
               DateFormat('EEEE, MMMM d, yyyy').format(now).toUpperCase(),
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.4),
-                fontSize: 10,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 9,
                 letterSpacing: 3,
                 fontWeight: FontWeight.w600,
+                shadows: [
+                  Shadow(
+                    color: Colors.black54,
+                    blurRadius: 8,
+                    offset: Offset(0, 1),
+                  ),
+                ],
               ),
             ),
           ],
@@ -285,13 +337,15 @@ class _HomeScreenState extends State<HomeScreen> {
       onLongPress: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const PermissionsAndPrivacyScreen()),
+          MaterialPageRoute(
+            builder: (_) => const PermissionsAndPrivacyScreen(),
+          ),
         ).then((_) => _controller.refreshHomeState());
       },
-      child: Column(
+      child: const Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.keyboard_arrow_up, color: Colors.white60, size: 28),
+          Icon(Icons.keyboard_arrow_up, color: Colors.white38, size: 20),
         ],
       ),
     );
@@ -303,75 +357,62 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _buildSetGoalPill(),
+          Expanded(child: _buildWideIntentionPill()),
           const SizedBox(width: 12),
-          Expanded(child: _buildCenterIntentionText()),
-          const SizedBox(width: 12),
-          if (_controller.hasUsagePermission) _buildUsageStats(),
+          _buildUsageStats(),
         ],
       ),
     );
   }
 
-  Widget _buildSetGoalPill() {
-    return GestureDetector(
-      onTap: () {
-        _controller.showGoalSetterOverlay();
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.flag, size: 14, color: Colors.white),
-            const SizedBox(width: 6),
-            const Text(
-              "Set Goal",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCenterIntentionText() {
+  Widget _buildWideIntentionPill() {
     final String? goalStr = _controller.goal;
     final hasGoal = goalStr != null && goalStr.isNotEmpty;
 
-    Widget textWidget = Text(
-      hasGoal ? goalStr : "No intention set",
-      textAlign: TextAlign.center,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        color: hasGoal ? Colors.white : Colors.white.withValues(alpha: 0.4),
-        fontSize: 14,
-        fontWeight: FontWeight.w500,
+    Widget pillContent = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.flag,
+            size: 16,
+            color: hasGoal ? Colors.white : Colors.white.withValues(alpha: 0.6),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              hasGoal ? goalStr : "Set a daily goal",
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: hasGoal
+                    ? Colors.white
+                    : Colors.white.withValues(alpha: 0.5),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
       ),
     );
 
     if (_controller.pulseIntention && !hasGoal) {
-      // Soft single pulse on morning unlock if no goal
-      textWidget = TweenAnimationBuilder<double>(
+      pillContent = TweenAnimationBuilder<double>(
         tween: Tween(begin: 0.3, end: 1.0),
         duration: const Duration(milliseconds: 2000),
         curve: Curves.easeInOutSine,
         builder: (context, val, child) {
-          return Opacity(opacity: val, child: child);
+          return Opacity(opacity: val, child: child!);
         },
         onEnd: () {
           _controller.stopPulse();
         },
-        child: textWidget,
+        child: pillContent,
       );
     }
 
@@ -380,13 +421,14 @@ class _HomeScreenState extends State<HomeScreen> {
         _controller.stopPulse();
         _controller.showGoalSetterOverlay();
       },
-      child: textWidget,
+      child: pillContent,
     );
   }
 
   Widget _buildUsageStats() {
-    // Keep home "overall usage" consistent with the dashboard list filtering.
+    final hasPermission = _controller.hasUsagePermission;
     final totalUsage = UsageService.getVisibleTotalUsage(minRoundedMinutes: 1);
+
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -399,24 +441,34 @@ class _HomeScreenState extends State<HomeScreen> {
                   return FadeTransition(opacity: animation, child: child);
                 },
           ),
-        );
+        ).then((_) => _controller.triggerRefresh());
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.3),
+          color: hasPermission
+              ? Colors.black.withValues(alpha: 0.3)
+              : Colors.redAccent.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          border: Border.all(
+            color: hasPermission
+                ? Colors.white.withValues(alpha: 0.2)
+                : Colors.redAccent.withValues(alpha: 0.4),
+          ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.bar_chart, size: 16, color: Colors.white),
+            Icon(
+              hasPermission ? Icons.bar_chart : Icons.warning_amber_rounded,
+              size: 16,
+              color: hasPermission ? Colors.white : Colors.red[200],
+            ),
             const SizedBox(width: 6),
             Text(
-              UsageService.formatDuration(totalUsage),
-              style: const TextStyle(
-                color: Colors.white,
+              hasPermission ? UsageService.formatDuration(totalUsage) : "?",
+              style: TextStyle(
+                color: hasPermission ? Colors.white : Colors.red[100],
                 fontSize: 13,
                 fontWeight: FontWeight.bold,
               ),
@@ -426,7 +478,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
 
   Widget _buildQuickAccessDock() {
     return Padding(

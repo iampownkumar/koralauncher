@@ -3,10 +3,14 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  dynamic_color
+  file_selector_windows
+  sentry_flutter
   url_launcher_windows
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
+  jni
 )
 
 set(PLUGIN_BUNDLED_LIBRARIES)

@@ -36,7 +36,6 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   int _countdownSeconds = 5;
   Timer? _countdownTimer;
 
-
   @override
   void initState() {
     super.initState();
@@ -107,15 +106,21 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
 
     // Register bypass FIRST so AccessibilityWatcherService ignores the next
     // focus event for this package.
-    ForegroundInterceptGuard.recordPostLaunchBypass(pkg,
-        window: const Duration(seconds: 6));
+    ForegroundInterceptGuard.recordPostLaunchBypass(
+      pkg,
+      window: const Duration(seconds: 6),
+    );
 
     // Atomically remove this app from the native blocklist so the Accessibility
     // service cannot re-fire the interception during the launch transition.
     // Without this, the service still sees the app as blocked and immediately
     // brings Kora to the foreground, causing the "closes the app" bug.
     final currentBlockList = StorageService.getFlaggedApps()
-        .where((p) => p != pkg && RisingTideService.getStage(p) != RisingTideStage.whisper)
+        .where(
+          (p) =>
+              p != pkg &&
+              RisingTideService.getStage(p) != RisingTideStage.whisper,
+        )
         .toList();
     await NativeService.sendBlockedApps(currentBlockList);
 
@@ -506,23 +511,35 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
             await db.saveIntention(intentionText);
           }
           RisingTideService.invalidateIntentionCache();
-          await RisingTideService.syncInterceptionState();
+
+          await StorageService.reloadPrefs();
           await UsageService.refreshUsage();
+          await RisingTideService.syncInterceptionState();
+
           final newStage = RisingTideService.getStage(widget.app.packageName);
           if (!mounted) return;
-          if (newStage == RisingTideStage.whisper) {
-            await _launchApp();
+
+          if (newStage != RisingTideStage.mirror) {
+            RisingTideLogger.logDecision(
+              widget.app.packageName,
+              "open_anyway",
+              "conscious",
+            );
+            await _launchApp(afterInterceptionFlow: true);
             return;
           }
+
           final stats = await RisingTideService.getStats(
             widget.app.packageName,
           );
+
           if (mounted) {
             setState(() {
               _stage = newStage;
               _opensToday = stats['opens'] ?? 0;
               _minutesToday = stats['minutes'] ?? 0;
               _dailyIntention = RisingTideService.getDailyIntention();
+              _startInitialCountdown();
             });
           }
         },

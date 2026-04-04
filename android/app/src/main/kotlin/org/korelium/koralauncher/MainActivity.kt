@@ -73,6 +73,40 @@ class MainActivity: FlutterActivity() {
                     openAccessibilitySettings()
                     result.success(null)
                 }
+                "setSystemWallpaper" -> {
+                    val bytes = call.argument<ByteArray>("bytes")
+                    if (bytes != null) {
+                        try {
+                            val wallpaperManager = android.app.WallpaperManager.getInstance(applicationContext)
+                            val bitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+
+                            // Get real screen dimensions to accurately center-crop for the device
+                            val metrics = android.util.DisplayMetrics()
+                            windowManager.defaultDisplay.getRealMetrics(metrics)
+                            val screenRatio = metrics.widthPixels.toFloat() / metrics.heightPixels.toFloat()
+                            val bitmapRatio = bitmap.width.toFloat() / bitmap.height.toFloat()
+
+                            val finalBitmap = if (bitmapRatio > screenRatio) {
+                                // Bitmap is wider than screen -> crop width equally from both sides (center horizontally)
+                                val newWidth = (bitmap.height * screenRatio).toInt()
+                                val startX = (bitmap.width - newWidth) / 2
+                                android.graphics.Bitmap.createBitmap(bitmap, startX, 0, newWidth, bitmap.height)
+                            } else {
+                                // Bitmap is taller than screen -> crop height equally from top/bottom
+                                val newHeight = (bitmap.width / screenRatio).toInt()
+                                val startY = (bitmap.height - newHeight) / 2
+                                android.graphics.Bitmap.createBitmap(bitmap, 0, startY, bitmap.width, newHeight)
+                            }
+
+                            wallpaperManager.setBitmap(finalBitmap, null, true, android.app.WallpaperManager.FLAG_SYSTEM or android.app.WallpaperManager.FLAG_LOCK)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.success(false)
+                        }
+                    } else {
+                        result.success(false)
+                    }
+                }
                 else -> {
                     result.notImplemented()
                 }
