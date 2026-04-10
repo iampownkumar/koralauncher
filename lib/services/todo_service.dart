@@ -118,4 +118,23 @@ class TodoService {
   static int get pendingCount => _todos.where((t) => !t.isCompleted).length;
 
   static bool hasPendingTodos() => pendingCount > 0;
+
+  /// Fetches all daily snapshots from the database and groups them by day.
+  /// Map keys are the DateTime normalized to midnight, sorted from newest to oldest.
+  static Future<Map<DateTime, List<DailySnapshot>>> getHistoryGroupedByDay() async {
+    final allSnapshots = await db.getAllDailySnapshots();
+    final Map<DateTime, List<DailySnapshot>> grouped = {};
+
+    for (final snapshot in allSnapshots) {
+      final date = DateTime(snapshot.date.year, snapshot.date.month, snapshot.date.day);
+      if (!grouped.containsKey(date)) {
+        grouped[date] = [];
+      }
+      grouped[date]!.add(snapshot);
+    }
+
+    // Since getAllDailySnapshots is already ordered desc, insertion order 
+    // in Dart's LinkedHashMap keeps them ordered by date desc.
+    return grouped;
+  }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/todo_service.dart';
+import 'todo_history_screen.dart';
 
 class TodoScreen extends StatefulWidget {
   const TodoScreen({super.key});
@@ -427,6 +428,24 @@ class _TodoScreenState extends State<TodoScreen> {
             ],
           ),
           centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.history, color: Colors.white60),
+              tooltip: 'Task History',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    pageBuilder: (c, a, s) => const TodoHistoryScreen(),
+                    transitionsBuilder: (c, anim, secondary, child) {
+                      return FadeTransition(opacity: anim, child: child);
+                    },
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 8),
+          ],
         ),
         body: Column(
           children: [

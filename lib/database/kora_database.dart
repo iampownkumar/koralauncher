@@ -333,6 +333,10 @@ class KoraDatabase extends _$KoraDatabase {
     }
   }
 
+  /// Get all snapshots to build a timeline
+  Future<List<DailySnapshot>> getAllDailySnapshots() =>
+      (select(dailySnapshots)..orderBy([(s) => OrderingTerm.desc(s.date)])).get();
+
   /// Retrieve the snapshot for a given day (pass DateTime.now() for yesterday etc.).
   Future<List<DailySnapshot>> getSnapshotForDay(DateTime day) {
     final midnight = DateTime(day.year, day.month, day.day);

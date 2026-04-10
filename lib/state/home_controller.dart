@@ -11,7 +11,8 @@ import '../wallpaper/wallpaper_service.dart';
 
 class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   bool showGoalSetter = false;
-  bool isMandatoryIntention = false; // true when no intention has been set today
+  bool isMandatoryIntention =
+      false; // true when no intention has been set today
   bool isDefaultLauncher = true;
   bool hideDefaultLauncherBanner = false;
   bool hasUsagePermission = true;
