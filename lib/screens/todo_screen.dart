@@ -101,7 +101,7 @@ class _TodoScreenState extends State<TodoScreen> {
     setState(() {});
   }
 
-  Future<void> _showEditDialog(int id, String currentTitle) async {
+  Future<void> _showEditDialog(int id, String currentTitle, {bool isIntention = false}) async {
     String? savedTitle;
 
     await showModalBottomSheet<void>(
@@ -110,7 +110,7 @@ class _TodoScreenState extends State<TodoScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         final ctrl = TextEditingController(text: currentTitle)
-          ..selection = TextSelection(baseOffset: 0, extentOffset: currentTitle.length);
+          ..selection = TextSelection.collapsed(offset: currentTitle.length);
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
             return Padding(
@@ -133,7 +133,22 @@ class _TodoScreenState extends State<TodoScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text('Edit task', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+                    Text(
+                      isIntention ? '🎯 Edit today\'s intention' : 'Edit task',
+                      style: TextStyle(
+                        color: isIntention ? Colors.cyanAccent : Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (isIntention)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Also updates your daily goal',
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 12),
+                        ),
+                      ),
                     const SizedBox(height: 14),
                     TextField(
                       controller: ctrl,
@@ -151,11 +166,11 @@ class _TodoScreenState extends State<TodoScreen> {
                     FilledButton(
                       onPressed: () { savedTitle = ctrl.text.trim(); Navigator.pop(ctx); },
                       style: FilledButton.styleFrom(
-                        backgroundColor: Colors.cyanAccent, foregroundColor: Colors.black,
+                        backgroundColor: isIntention ? Colors.cyanAccent : Colors.cyanAccent, foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      child: const Text('Save task', style: TextStyle(fontWeight: FontWeight.w800)),
+                      child: Text(isIntention ? 'Update Intention + Task' : 'Save task', style: const TextStyle(fontWeight: FontWeight.w800)),
                     ),
                   ],
                 ),
@@ -313,14 +328,23 @@ class _TodoScreenState extends State<TodoScreen> {
 
   Widget _buildTodoTile(dynamic todo) {
     final isCompleted = todo.isCompleted;
+    final isIntentionLinked = todo.source == 'intention';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: isCompleted ? Colors.white.withValues(alpha: 0.02) : Colors.white.withValues(alpha: 0.06),
+        color: isCompleted
+            ? Colors.white.withValues(alpha: 0.02)
+            : isIntentionLinked
+                ? Colors.cyanAccent.withValues(alpha: 0.04)
+                : Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isCompleted ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.1),
+          color: isCompleted
+              ? Colors.white.withValues(alpha: 0.05)
+              : isIntentionLinked
+                  ? Colors.cyanAccent.withValues(alpha: 0.2)
+                  : Colors.white.withValues(alpha: 0.1),
         ),
       ),
       child: ListTile(
@@ -328,7 +352,11 @@ class _TodoScreenState extends State<TodoScreen> {
           onTap: () => _toggleTodoState(todo),
           child: Icon(
             isCompleted ? Icons.check_circle : Icons.circle_outlined,
-            color: isCompleted ? Colors.white38 : Colors.white70,
+            color: isCompleted
+                ? Colors.white38
+                : isIntentionLinked
+                    ? Colors.cyanAccent.withValues(alpha: 0.8)
+                    : Colors.white70,
           ),
         ),
         title: Text(
@@ -340,24 +368,33 @@ class _TodoScreenState extends State<TodoScreen> {
             fontWeight: isCompleted ? FontWeight.normal : FontWeight.w500,
           ),
         ),
-        trailing: isCompleted 
-           ? null 
-           : Row(
-               mainAxisSize: MainAxisSize.min,
-               children: [
-                 GestureDetector(
-                   onTap: () => _showEditDialog(todo.id, todo.title),
-                   child: const Padding(
-                     padding: EdgeInsets.all(8.0),
-                     child: Icon(Icons.edit_outlined, size: 18, color: Colors.white38),
-                   ),
-                 ),
-                 const Padding(
-                   padding: EdgeInsets.all(8.0),
-                   child: Icon(Icons.drag_indicator, color: Colors.white24),
-                 ),
-               ],
-             )
+        subtitle: isIntentionLinked && !isCompleted
+            ? Text(
+                '🎯 Today\'s intention',
+                style: TextStyle(
+                  color: Colors.cyanAccent.withValues(alpha: 0.6),
+                  fontSize: 11,
+                ),
+              )
+            : null,
+        trailing: isCompleted
+            ? null
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: () => _showEditDialog(todo.id, todo.title, isIntention: isIntentionLinked),
+                    child: const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Icon(Icons.edit_outlined, size: 18, color: Colors.white38),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Icon(Icons.drag_indicator, color: Colors.white24),
+                  ),
+                ],
+              ),
       ),
     );
   }

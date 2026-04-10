@@ -194,6 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   GoalSetter(
                     initialGoal: _controller.goal,
                     onDismiss: _controller.dismissGoalSetter,
+                    isMandatory: _controller.isMandatoryIntention,
                     onGoalSet: _controller.onGoalSet,
                   ),
 

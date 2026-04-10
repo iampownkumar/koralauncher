@@ -100,6 +100,26 @@ class StorageService {
     return getDailyIntention() != null;
   }
 
+  // --- Intention-linked Todo ID ---
+  // Stores the DB row ID of the todo that was auto-created from today's intention.
+
+  static String _intentionTodoKey() {
+    final today = _localDayKey(DateTime.now());
+    return 'intention_todo_id_$today';
+  }
+
+  static int? getIntentionTodoId() {
+    return _prefs.getInt(_intentionTodoKey());
+  }
+
+  static Future<void> setIntentionTodoId(int id) async {
+    await _prefs.setInt(_intentionTodoKey(), id);
+  }
+
+  static Future<void> clearIntentionTodoId() async {
+    await _prefs.remove(_intentionTodoKey());
+  }
+
   static bool isMinimalMode() {
     return _prefs.getBool('minimal_mode') ?? false;
   }

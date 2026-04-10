@@ -1,5 +1,6 @@
 import '../database/database_provider.dart';
 import '../database/kora_database.dart';
+import 'storage_service.dart';
 
 class TodoService {
   static final List<Todo> _todos = [];
@@ -14,16 +15,21 @@ class TodoService {
     final list = await db.getTodos();
     final today = DateTime.now();
 
-    // Nightly Reset Logic: purge tasks not from today
-    for (var t in list) {
-      if (t.createdAt.year != today.year ||
-          t.createdAt.month != today.month ||
-          t.createdAt.day != today.day) {
+    // Identify stale todos (not from today)
+    final staleTodos = list.where((t) =>
+        t.createdAt.year != today.year ||
+        t.createdAt.month != today.month ||
+        t.createdAt.day != today.day).toList();
+
+    // ── Nightly Reset: snapshot BEFORE deleting ──────────────────
+    if (staleTodos.isNotEmpty) {
+      await db.saveDailySnapshot(staleTodos);
+      for (var t in staleTodos) {
         await db.deleteTodo(t.id);
       }
     }
 
-    // Refetch the purged list — ordered by priority (lower = higher up)
+    // Refetch \u2014 ordered by priority (lower = higher up)
     final finalList = await db.getTodos();
     _todos.clear();
     _todos.addAll(finalList);
@@ -39,19 +45,58 @@ class TodoService {
     await refreshTodos();
   }
 
+  /// Add the intention as the first (pinned) todo and store its ID for sync.
+  static Future<void> addIntentionTodo(String intention) async {
+    // If a linked todo already exists for today, update it instead
+    final existingId = StorageService.getIntentionTodoId();
+    if (existingId != null) {
+      await db.updateTodoTitle(existingId, intention);
+      await refreshTodos();
+      return;
+    }
+
+    // Insert at priority 0 (top of list) — shift existing todos down
+    for (int i = 0; i < _todos.length; i++) {
+      await db.updateTodoPriority(_todos[i].id, i + 1);
+    }
+    final newId = await db.addTodo(intention, priority: 0, source: 'intention');
+    await StorageService.setIntentionTodoId(newId);
+    await refreshTodos();
+  }
+
+  /// Update the intention-linked todo title (called when intention is edited).
+  static Future<void> updateIntentionTodo(String newTitle) async {
+    final existingId = StorageService.getIntentionTodoId();
+    if (existingId == null) return;
+    await db.updateTodoTitle(existingId, newTitle);
+    await refreshTodos();
+  }
+
+  /// Called from TodoScreen when the user edits a todo that has source='intention'.
+  /// Updates both the todo title and the stored daily intention.
+  static Future<void> editTodo(int id, String newTitle) async {
+    await db.updateTodoTitle(id, newTitle);
+    // If this is the intention-linked todo, also sync back to StorageService
+    final linkedId = StorageService.getIntentionTodoId();
+    if (linkedId == id) {
+      await StorageService.setDailyIntention(newTitle);
+      await db.saveIntention(newTitle);
+    }
+    await refreshTodos();
+  }
+
   static Future<void> toggleTodo(int id) async {
     await db.toggleTodo(id);
     await refreshTodos();
   }
 
   static Future<void> deleteTodo(int id) async {
+    // If deleting the intention-linked todo, clear the link
+    final linkedId = StorageService.getIntentionTodoId();
+    if (linkedId == id) {
+      await StorageService.clearIntentionTodoId();
+    }
     await db.deleteTodo(id);
-    await refreshTodos();
-  }
-
-  /// Edit the title of a task.
-  static Future<void> editTodo(int id, String newTitle) async {
-    await db.updateTodoTitle(id, newTitle);
     await refreshTodos();
   }
 

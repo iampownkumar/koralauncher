@@ -141,7 +141,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
         },
         child: Scaffold(
           resizeToAvoidBottomInset: false, // Prevent layout jumps
-          backgroundColor: Colors.transparent, 
+          backgroundColor: Colors.transparent,
           body: Stack(
             children: [
               // Dark Blur Background

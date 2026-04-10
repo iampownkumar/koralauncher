@@ -93,17 +93,31 @@ class Todos extends Table {
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get completedAt => dateTime().nullable()();
   IntColumn get priority => integer().withDefault(const Constant(0))(); // 0=none, 1=low, 2=med, 3=high
+  // 'manual' or 'intention' — intention-linked tasks sync back to the daily goal
+  TextColumn get source => text().withDefault(const Constant('manual'))();
+}
+
+// ─────────────────────────────────────────────
+// TABLE 7: DAILY TODO SNAPSHOTS
+// Saved before midnight reset so we can review yesterday's completion.
+// ─────────────────────────────────────────────
+class DailySnapshots extends Table {
+  IntColumn get id    => integer().autoIncrement()();
+  DateTimeColumn get date             => dateTime()();  // start-of-day (midnight)
+  TextColumn get taskTitle            => text()();
+  BoolColumn get completed            => boolean()();
+  TextColumn get source               => text().withDefault(const Constant('manual'))(); // 'manual'/'intention'
 }
 
 // ─────────────────────────────────────────────
 // DATABASE CLASS
 // ─────────────────────────────────────────────
-@DriftDatabase(tables: [Sessions, Moods, Decisions, Intentions, TideEvents, Todos])
+@DriftDatabase(tables: [Sessions, Moods, Decisions, Intentions, TideEvents, Todos, DailySnapshots])
 class KoraDatabase extends _$KoraDatabase {
   KoraDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   // ── SESSION QUERIES ──────────────────────
 
@@ -254,8 +268,14 @@ class KoraDatabase extends _$KoraDatabase {
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onUpgrade: (m, from, to) async {
-          if (from == 1) {
+          if (from <= 1) {
             await m.createTable(todos);
+          }
+          if (from <= 2) {
+            // Add source column to todos (defaults to 'manual')
+            await m.addColumn(todos, todos.source);
+            // Create the new daily snapshots table
+            await m.createTable(dailySnapshots);
           }
         },
       );
@@ -265,11 +285,12 @@ class KoraDatabase extends _$KoraDatabase {
   Future<List<Todo>> getTodos() =>
       (select(todos)..orderBy([(t) => OrderingTerm.desc(t.createdAt)])).get();
 
-  Future<int> addTodo(String title, {int priority = 0}) =>
+  Future<int> addTodo(String title, {int priority = 0, String source = 'manual'}) =>
       into(todos).insert(TodosCompanion.insert(
         title: title,
         createdAt: DateTime.now(),
         priority: Value(priority),
+        source: Value(source),
       ));
 
   Future<void> toggleTodo(int id) async {
@@ -294,6 +315,34 @@ class KoraDatabase extends _$KoraDatabase {
       (update(todos)..where((t) => t.id.equals(id))).write(
         TodosCompanion(priority: Value(priority)),
       );
+
+  // ── DAILY SNAPSHOT QUERIES ───────────────
+
+  /// Persist all of today's todos before the midnight purge.
+  Future<void> saveDailySnapshot(List<Todo> todayTodos) async {
+    if (todayTodos.isEmpty) return;
+    final today = DateTime.now();
+    final midnight = DateTime(today.year, today.month, today.day);
+    for (final t in todayTodos) {
+      await into(dailySnapshots).insert(DailySnapshotsCompanion.insert(
+        date: midnight,
+        taskTitle: t.title,
+        completed: t.isCompleted,
+        source: Value(t.source),
+      ));
+    }
+  }
+
+  /// Retrieve the snapshot for a given day (pass DateTime.now() for yesterday etc.).
+  Future<List<DailySnapshot>> getSnapshotForDay(DateTime day) {
+    final midnight = DateTime(day.year, day.month, day.day);
+    final next = midnight.add(const Duration(days: 1));
+    return (select(dailySnapshots)
+          ..where((s) =>
+              s.date.isBiggerOrEqualValue(midnight) &
+              s.date.isSmallerThanValue(next)))
+        .get();
+  }
 
   Future<Intention?> getTodayIntention() async {
     final today = DateTime.now();

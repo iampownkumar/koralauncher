@@ -2478,6 +2478,16 @@ class $TodosTable extends Todos with TableInfo<$TodosTable, Todo> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('manual'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2486,6 +2496,7 @@ class $TodosTable extends Todos with TableInfo<$TodosTable, Todo> {
     createdAt,
     completedAt,
     priority,
+    source,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2542,6 +2553,12 @@ class $TodosTable extends Todos with TableInfo<$TodosTable, Todo> {
         priority.isAcceptableOrUnknown(data['priority']!, _priorityMeta),
       );
     }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
     return context;
   }
 
@@ -2575,6 +2592,10 @@ class $TodosTable extends Todos with TableInfo<$TodosTable, Todo> {
         DriftSqlType.int,
         data['${effectivePrefix}priority'],
       )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
     );
   }
 
@@ -2591,6 +2612,7 @@ class Todo extends DataClass implements Insertable<Todo> {
   final DateTime createdAt;
   final DateTime? completedAt;
   final int priority;
+  final String source;
   const Todo({
     required this.id,
     required this.title,
@@ -2598,6 +2620,7 @@ class Todo extends DataClass implements Insertable<Todo> {
     required this.createdAt,
     this.completedAt,
     required this.priority,
+    required this.source,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2610,6 +2633,7 @@ class Todo extends DataClass implements Insertable<Todo> {
       map['completed_at'] = Variable<DateTime>(completedAt);
     }
     map['priority'] = Variable<int>(priority);
+    map['source'] = Variable<String>(source);
     return map;
   }
 
@@ -2623,6 +2647,7 @@ class Todo extends DataClass implements Insertable<Todo> {
           ? const Value.absent()
           : Value(completedAt),
       priority: Value(priority),
+      source: Value(source),
     );
   }
 
@@ -2638,6 +2663,7 @@ class Todo extends DataClass implements Insertable<Todo> {
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
       priority: serializer.fromJson<int>(json['priority']),
+      source: serializer.fromJson<String>(json['source']),
     );
   }
   @override
@@ -2650,6 +2676,7 @@ class Todo extends DataClass implements Insertable<Todo> {
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
       'priority': serializer.toJson<int>(priority),
+      'source': serializer.toJson<String>(source),
     };
   }
 
@@ -2660,6 +2687,7 @@ class Todo extends DataClass implements Insertable<Todo> {
     DateTime? createdAt,
     Value<DateTime?> completedAt = const Value.absent(),
     int? priority,
+    String? source,
   }) => Todo(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -2667,6 +2695,7 @@ class Todo extends DataClass implements Insertable<Todo> {
     createdAt: createdAt ?? this.createdAt,
     completedAt: completedAt.present ? completedAt.value : this.completedAt,
     priority: priority ?? this.priority,
+    source: source ?? this.source,
   );
   Todo copyWithCompanion(TodosCompanion data) {
     return Todo(
@@ -2680,6 +2709,7 @@ class Todo extends DataClass implements Insertable<Todo> {
           ? data.completedAt.value
           : this.completedAt,
       priority: data.priority.present ? data.priority.value : this.priority,
+      source: data.source.present ? data.source.value : this.source,
     );
   }
 
@@ -2691,14 +2721,22 @@ class Todo extends DataClass implements Insertable<Todo> {
           ..write('isCompleted: $isCompleted, ')
           ..write('createdAt: $createdAt, ')
           ..write('completedAt: $completedAt, ')
-          ..write('priority: $priority')
+          ..write('priority: $priority, ')
+          ..write('source: $source')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, title, isCompleted, createdAt, completedAt, priority);
+  int get hashCode => Object.hash(
+    id,
+    title,
+    isCompleted,
+    createdAt,
+    completedAt,
+    priority,
+    source,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2708,7 +2746,8 @@ class Todo extends DataClass implements Insertable<Todo> {
           other.isCompleted == this.isCompleted &&
           other.createdAt == this.createdAt &&
           other.completedAt == this.completedAt &&
-          other.priority == this.priority);
+          other.priority == this.priority &&
+          other.source == this.source);
 }
 
 class TodosCompanion extends UpdateCompanion<Todo> {
@@ -2718,6 +2757,7 @@ class TodosCompanion extends UpdateCompanion<Todo> {
   final Value<DateTime> createdAt;
   final Value<DateTime?> completedAt;
   final Value<int> priority;
+  final Value<String> source;
   const TodosCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
@@ -2725,6 +2765,7 @@ class TodosCompanion extends UpdateCompanion<Todo> {
     this.createdAt = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.priority = const Value.absent(),
+    this.source = const Value.absent(),
   });
   TodosCompanion.insert({
     this.id = const Value.absent(),
@@ -2733,6 +2774,7 @@ class TodosCompanion extends UpdateCompanion<Todo> {
     required DateTime createdAt,
     this.completedAt = const Value.absent(),
     this.priority = const Value.absent(),
+    this.source = const Value.absent(),
   }) : title = Value(title),
        createdAt = Value(createdAt);
   static Insertable<Todo> custom({
@@ -2742,6 +2784,7 @@ class TodosCompanion extends UpdateCompanion<Todo> {
     Expression<DateTime>? createdAt,
     Expression<DateTime>? completedAt,
     Expression<int>? priority,
+    Expression<String>? source,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2750,6 +2793,7 @@ class TodosCompanion extends UpdateCompanion<Todo> {
       if (createdAt != null) 'created_at': createdAt,
       if (completedAt != null) 'completed_at': completedAt,
       if (priority != null) 'priority': priority,
+      if (source != null) 'source': source,
     });
   }
 
@@ -2760,6 +2804,7 @@ class TodosCompanion extends UpdateCompanion<Todo> {
     Value<DateTime>? createdAt,
     Value<DateTime?>? completedAt,
     Value<int>? priority,
+    Value<String>? source,
   }) {
     return TodosCompanion(
       id: id ?? this.id,
@@ -2768,6 +2813,7 @@ class TodosCompanion extends UpdateCompanion<Todo> {
       createdAt: createdAt ?? this.createdAt,
       completedAt: completedAt ?? this.completedAt,
       priority: priority ?? this.priority,
+      source: source ?? this.source,
     );
   }
 
@@ -2792,6 +2838,9 @@ class TodosCompanion extends UpdateCompanion<Todo> {
     if (priority.present) {
       map['priority'] = Variable<int>(priority.value);
     }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
     return map;
   }
 
@@ -2803,7 +2852,357 @@ class TodosCompanion extends UpdateCompanion<Todo> {
           ..write('isCompleted: $isCompleted, ')
           ..write('createdAt: $createdAt, ')
           ..write('completedAt: $completedAt, ')
-          ..write('priority: $priority')
+          ..write('priority: $priority, ')
+          ..write('source: $source')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DailySnapshotsTable extends DailySnapshots
+    with TableInfo<$DailySnapshotsTable, DailySnapshot> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DailySnapshotsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _taskTitleMeta = const VerificationMeta(
+    'taskTitle',
+  );
+  @override
+  late final GeneratedColumn<String> taskTitle = GeneratedColumn<String>(
+    'task_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _completedMeta = const VerificationMeta(
+    'completed',
+  );
+  @override
+  late final GeneratedColumn<bool> completed = GeneratedColumn<bool>(
+    'completed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("completed" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('manual'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    date,
+    taskTitle,
+    completed,
+    source,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'daily_snapshots';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DailySnapshot> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('task_title')) {
+      context.handle(
+        _taskTitleMeta,
+        taskTitle.isAcceptableOrUnknown(data['task_title']!, _taskTitleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskTitleMeta);
+    }
+    if (data.containsKey('completed')) {
+      context.handle(
+        _completedMeta,
+        completed.isAcceptableOrUnknown(data['completed']!, _completedMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_completedMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DailySnapshot map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DailySnapshot(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      taskTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_title'],
+      )!,
+      completed: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}completed'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+    );
+  }
+
+  @override
+  $DailySnapshotsTable createAlias(String alias) {
+    return $DailySnapshotsTable(attachedDatabase, alias);
+  }
+}
+
+class DailySnapshot extends DataClass implements Insertable<DailySnapshot> {
+  final int id;
+  final DateTime date;
+  final String taskTitle;
+  final bool completed;
+  final String source;
+  const DailySnapshot({
+    required this.id,
+    required this.date,
+    required this.taskTitle,
+    required this.completed,
+    required this.source,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['date'] = Variable<DateTime>(date);
+    map['task_title'] = Variable<String>(taskTitle);
+    map['completed'] = Variable<bool>(completed);
+    map['source'] = Variable<String>(source);
+    return map;
+  }
+
+  DailySnapshotsCompanion toCompanion(bool nullToAbsent) {
+    return DailySnapshotsCompanion(
+      id: Value(id),
+      date: Value(date),
+      taskTitle: Value(taskTitle),
+      completed: Value(completed),
+      source: Value(source),
+    );
+  }
+
+  factory DailySnapshot.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DailySnapshot(
+      id: serializer.fromJson<int>(json['id']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      taskTitle: serializer.fromJson<String>(json['taskTitle']),
+      completed: serializer.fromJson<bool>(json['completed']),
+      source: serializer.fromJson<String>(json['source']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'date': serializer.toJson<DateTime>(date),
+      'taskTitle': serializer.toJson<String>(taskTitle),
+      'completed': serializer.toJson<bool>(completed),
+      'source': serializer.toJson<String>(source),
+    };
+  }
+
+  DailySnapshot copyWith({
+    int? id,
+    DateTime? date,
+    String? taskTitle,
+    bool? completed,
+    String? source,
+  }) => DailySnapshot(
+    id: id ?? this.id,
+    date: date ?? this.date,
+    taskTitle: taskTitle ?? this.taskTitle,
+    completed: completed ?? this.completed,
+    source: source ?? this.source,
+  );
+  DailySnapshot copyWithCompanion(DailySnapshotsCompanion data) {
+    return DailySnapshot(
+      id: data.id.present ? data.id.value : this.id,
+      date: data.date.present ? data.date.value : this.date,
+      taskTitle: data.taskTitle.present ? data.taskTitle.value : this.taskTitle,
+      completed: data.completed.present ? data.completed.value : this.completed,
+      source: data.source.present ? data.source.value : this.source,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DailySnapshot(')
+          ..write('id: $id, ')
+          ..write('date: $date, ')
+          ..write('taskTitle: $taskTitle, ')
+          ..write('completed: $completed, ')
+          ..write('source: $source')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, date, taskTitle, completed, source);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DailySnapshot &&
+          other.id == this.id &&
+          other.date == this.date &&
+          other.taskTitle == this.taskTitle &&
+          other.completed == this.completed &&
+          other.source == this.source);
+}
+
+class DailySnapshotsCompanion extends UpdateCompanion<DailySnapshot> {
+  final Value<int> id;
+  final Value<DateTime> date;
+  final Value<String> taskTitle;
+  final Value<bool> completed;
+  final Value<String> source;
+  const DailySnapshotsCompanion({
+    this.id = const Value.absent(),
+    this.date = const Value.absent(),
+    this.taskTitle = const Value.absent(),
+    this.completed = const Value.absent(),
+    this.source = const Value.absent(),
+  });
+  DailySnapshotsCompanion.insert({
+    this.id = const Value.absent(),
+    required DateTime date,
+    required String taskTitle,
+    required bool completed,
+    this.source = const Value.absent(),
+  }) : date = Value(date),
+       taskTitle = Value(taskTitle),
+       completed = Value(completed);
+  static Insertable<DailySnapshot> custom({
+    Expression<int>? id,
+    Expression<DateTime>? date,
+    Expression<String>? taskTitle,
+    Expression<bool>? completed,
+    Expression<String>? source,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (date != null) 'date': date,
+      if (taskTitle != null) 'task_title': taskTitle,
+      if (completed != null) 'completed': completed,
+      if (source != null) 'source': source,
+    });
+  }
+
+  DailySnapshotsCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? date,
+    Value<String>? taskTitle,
+    Value<bool>? completed,
+    Value<String>? source,
+  }) {
+    return DailySnapshotsCompanion(
+      id: id ?? this.id,
+      date: date ?? this.date,
+      taskTitle: taskTitle ?? this.taskTitle,
+      completed: completed ?? this.completed,
+      source: source ?? this.source,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (taskTitle.present) {
+      map['task_title'] = Variable<String>(taskTitle.value);
+    }
+    if (completed.present) {
+      map['completed'] = Variable<bool>(completed.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DailySnapshotsCompanion(')
+          ..write('id: $id, ')
+          ..write('date: $date, ')
+          ..write('taskTitle: $taskTitle, ')
+          ..write('completed: $completed, ')
+          ..write('source: $source')
           ..write(')'))
         .toString();
   }
@@ -2818,6 +3217,7 @@ abstract class _$KoraDatabase extends GeneratedDatabase {
   late final $IntentionsTable intentions = $IntentionsTable(this);
   late final $TideEventsTable tideEvents = $TideEventsTable(this);
   late final $TodosTable todos = $TodosTable(this);
+  late final $DailySnapshotsTable dailySnapshots = $DailySnapshotsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2829,6 +3229,7 @@ abstract class _$KoraDatabase extends GeneratedDatabase {
     intentions,
     tideEvents,
     todos,
+    dailySnapshots,
   ];
 }
 
@@ -4022,6 +4423,7 @@ typedef $$TodosTableCreateCompanionBuilder =
       required DateTime createdAt,
       Value<DateTime?> completedAt,
       Value<int> priority,
+      Value<String> source,
     });
 typedef $$TodosTableUpdateCompanionBuilder =
     TodosCompanion Function({
@@ -4031,6 +4433,7 @@ typedef $$TodosTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
       Value<DateTime?> completedAt,
       Value<int> priority,
+      Value<String> source,
     });
 
 class $$TodosTableFilterComposer extends Composer<_$KoraDatabase, $TodosTable> {
@@ -4068,6 +4471,11 @@ class $$TodosTableFilterComposer extends Composer<_$KoraDatabase, $TodosTable> {
 
   ColumnFilters<int> get priority => $composableBuilder(
     column: $table.priority,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -4110,6 +4518,11 @@ class $$TodosTableOrderingComposer
     column: $table.priority,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TodosTableAnnotationComposer
@@ -4142,6 +4555,9 @@ class $$TodosTableAnnotationComposer
 
   GeneratedColumn<int> get priority =>
       $composableBuilder(column: $table.priority, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
 }
 
 class $$TodosTableTableManager
@@ -4178,6 +4594,7 @@ class $$TodosTableTableManager
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<int> priority = const Value.absent(),
+                Value<String> source = const Value.absent(),
               }) => TodosCompanion(
                 id: id,
                 title: title,
@@ -4185,6 +4602,7 @@ class $$TodosTableTableManager
                 createdAt: createdAt,
                 completedAt: completedAt,
                 priority: priority,
+                source: source,
               ),
           createCompanionCallback:
               ({
@@ -4194,6 +4612,7 @@ class $$TodosTableTableManager
                 required DateTime createdAt,
                 Value<DateTime?> completedAt = const Value.absent(),
                 Value<int> priority = const Value.absent(),
+                Value<String> source = const Value.absent(),
               }) => TodosCompanion.insert(
                 id: id,
                 title: title,
@@ -4201,6 +4620,7 @@ class $$TodosTableTableManager
                 createdAt: createdAt,
                 completedAt: completedAt,
                 priority: priority,
+                source: source,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -4224,6 +4644,202 @@ typedef $$TodosTableProcessedTableManager =
       Todo,
       PrefetchHooks Function()
     >;
+typedef $$DailySnapshotsTableCreateCompanionBuilder =
+    DailySnapshotsCompanion Function({
+      Value<int> id,
+      required DateTime date,
+      required String taskTitle,
+      required bool completed,
+      Value<String> source,
+    });
+typedef $$DailySnapshotsTableUpdateCompanionBuilder =
+    DailySnapshotsCompanion Function({
+      Value<int> id,
+      Value<DateTime> date,
+      Value<String> taskTitle,
+      Value<bool> completed,
+      Value<String> source,
+    });
+
+class $$DailySnapshotsTableFilterComposer
+    extends Composer<_$KoraDatabase, $DailySnapshotsTable> {
+  $$DailySnapshotsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get taskTitle => $composableBuilder(
+    column: $table.taskTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get completed => $composableBuilder(
+    column: $table.completed,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DailySnapshotsTableOrderingComposer
+    extends Composer<_$KoraDatabase, $DailySnapshotsTable> {
+  $$DailySnapshotsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get taskTitle => $composableBuilder(
+    column: $table.taskTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get completed => $composableBuilder(
+    column: $table.completed,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DailySnapshotsTableAnnotationComposer
+    extends Composer<_$KoraDatabase, $DailySnapshotsTable> {
+  $$DailySnapshotsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<String> get taskTitle =>
+      $composableBuilder(column: $table.taskTitle, builder: (column) => column);
+
+  GeneratedColumn<bool> get completed =>
+      $composableBuilder(column: $table.completed, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+}
+
+class $$DailySnapshotsTableTableManager
+    extends
+        RootTableManager<
+          _$KoraDatabase,
+          $DailySnapshotsTable,
+          DailySnapshot,
+          $$DailySnapshotsTableFilterComposer,
+          $$DailySnapshotsTableOrderingComposer,
+          $$DailySnapshotsTableAnnotationComposer,
+          $$DailySnapshotsTableCreateCompanionBuilder,
+          $$DailySnapshotsTableUpdateCompanionBuilder,
+          (
+            DailySnapshot,
+            BaseReferences<_$KoraDatabase, $DailySnapshotsTable, DailySnapshot>,
+          ),
+          DailySnapshot,
+          PrefetchHooks Function()
+        > {
+  $$DailySnapshotsTableTableManager(
+    _$KoraDatabase db,
+    $DailySnapshotsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DailySnapshotsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DailySnapshotsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DailySnapshotsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<String> taskTitle = const Value.absent(),
+                Value<bool> completed = const Value.absent(),
+                Value<String> source = const Value.absent(),
+              }) => DailySnapshotsCompanion(
+                id: id,
+                date: date,
+                taskTitle: taskTitle,
+                completed: completed,
+                source: source,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required DateTime date,
+                required String taskTitle,
+                required bool completed,
+                Value<String> source = const Value.absent(),
+              }) => DailySnapshotsCompanion.insert(
+                id: id,
+                date: date,
+                taskTitle: taskTitle,
+                completed: completed,
+                source: source,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DailySnapshotsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$KoraDatabase,
+      $DailySnapshotsTable,
+      DailySnapshot,
+      $$DailySnapshotsTableFilterComposer,
+      $$DailySnapshotsTableOrderingComposer,
+      $$DailySnapshotsTableAnnotationComposer,
+      $$DailySnapshotsTableCreateCompanionBuilder,
+      $$DailySnapshotsTableUpdateCompanionBuilder,
+      (
+        DailySnapshot,
+        BaseReferences<_$KoraDatabase, $DailySnapshotsTable, DailySnapshot>,
+      ),
+      DailySnapshot,
+      PrefetchHooks Function()
+    >;
 
 class $KoraDatabaseManager {
   final _$KoraDatabase _db;
@@ -4240,4 +4856,6 @@ class $KoraDatabaseManager {
       $$TideEventsTableTableManager(_db, _db.tideEvents);
   $$TodosTableTableManager get todos =>
       $$TodosTableTableManager(_db, _db.todos);
+  $$DailySnapshotsTableTableManager get dailySnapshots =>
+      $$DailySnapshotsTableTableManager(_db, _db.dailySnapshots);
 }

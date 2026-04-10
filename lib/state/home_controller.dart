@@ -11,6 +11,7 @@ import '../wallpaper/wallpaper_service.dart';
 
 class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   bool showGoalSetter = false;
+  bool isMandatoryIntention = false; // true when no intention has been set today
   bool isDefaultLauncher = true;
   bool hideDefaultLauncherBanner = false;
   bool hasUsagePermission = true;
@@ -49,6 +50,7 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
 
     if (!StorageService.hasCompletedOnboarding()) {
       showGoalSetter = true;
+      isMandatoryIntention = true; // first-ever onboarding
       notifyListeners();
     } else {
       _checkMorningGoalTrigger();
@@ -86,12 +88,12 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void _checkMorningGoalTrigger() {
-    final now = DateTime.now();
-    if (now.hour >= 5 && now.hour < 10) {
-      if (goal == null || goal!.isEmpty) {
-        pulseIntention = true;
-        notifyListeners();
-      }
+    // Show the intention setter any time the user opens the launcher without
+    // having set a goal today — time-of-day restriction removed.
+    if (goal == null || goal!.isEmpty) {
+      isMandatoryIntention = true;
+      showGoalSetter = true;
+      notifyListeners();
     }
   }
 
@@ -103,11 +105,14 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void showGoalSetterOverlay() {
+    // Edit mode — intention already exists so it’s not mandatory
+    isMandatoryIntention = false;
     showGoalSetter = true;
     notifyListeners();
   }
 
   void dismissGoalSetter() {
+    // Only callable in edit (non-mandatory) mode
     showGoalSetter = false;
     notifyListeners();
   }
@@ -119,11 +124,15 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
 
   void onGoalSet() {
     showGoalSetter = false;
+    isMandatoryIntention = false;
     goal = StorageService.getDailyIntention();
+    // Refresh todos so the new intention-linked todo appears on home screen
+    TodoService.refreshTodos().then((_) => notifyListeners());
     notifyListeners();
   }
 
   void triggerRefresh() {
+    goal = StorageService.getDailyIntention();
     notifyListeners();
   }
 }
