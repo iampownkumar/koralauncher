@@ -26,9 +26,9 @@ class PermissionGateCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.04),
+            color: Colors.white.withOpacity(0.04),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+            border: Border.all(color: Colors.white.withOpacity(0.10)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -49,7 +49,7 @@ class PermissionGateCard extends StatelessWidget {
                 body,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.45),
+                  color: Colors.white.withOpacity(0.45),
                   fontSize: 13,
                   height: 1.5,
                 ),

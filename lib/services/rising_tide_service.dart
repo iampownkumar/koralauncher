@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../models/rising_tide_stage.dart';
 import 'usage_service.dart';
 import 'storage_service.dart';
@@ -41,12 +42,9 @@ class RisingTideService {
       stage = RisingTideStage.whisper;
     }
 
-    // Reopen lock: keep the same gate active; for whisper promote to dim.
+    // Reopen lock: If the grace period is active, let them through (Whisper).
     if (isPackageLocked(packageName)) {
-      if (stage == RisingTideStage.whisper) {
-        return RisingTideStage.dim;
-      }
-      return stage;
+      return RisingTideStage.whisper;
     }
 
     return stage;
@@ -147,6 +145,14 @@ class RisingTideService {
     await RisingTideLogger.logReopenLockApplied(packageName);
   }
 
+  /// Manually clears the grace period lock for a package.
+  /// Call this when the user launches an app from the Launcher UI
+  /// to ensure they are always intercepted on "New Sessions".
+  static Future<void> clearReopenLock(String packageName) async {
+    await StorageService.remove(_lockKeyPrefix + packageName);
+    debugPrint('RisingTide: Cleared grace period for $packageName');
+  }
+
   /// Returns the remaining duration of the lock, or Duration.zero if not locked.
   static Duration getRemainingLockDuration(String packageName) {
     final lockStr = StorageService.getString(_lockKeyPrefix + packageName);
@@ -180,11 +186,7 @@ class RisingTideService {
     }
   }
 
-  /// Clears the lock when the user finishes a mindful flow.
-  static Future<void> clearReopenLock(String packageName) async {
-    await StorageService.remove(_lockKeyPrefix + packageName);
-    await RisingTideLogger.logReopenLockCleared(packageName);
-  }
+
 
   /// Gets the cached intention or fetches it from storage.
   static String? getDailyIntention() {

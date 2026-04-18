@@ -96,7 +96,7 @@ class _TidePoolScreenState extends State<TidePoolScreen>
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 icon: const Icon(Icons.add),
-                backgroundColor: Colors.cyan.withValues(alpha: 0.8),
+                backgroundColor: Colors.cyan.withOpacity(0.8),
                 foregroundColor: Colors.black,
               )
             : null,
@@ -157,7 +157,7 @@ class _TidePoolScreenState extends State<TidePoolScreen>
                     'What you give attention to, grows.\n'
                     'Use this side when you want a pause before the scroll.',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
+                      color: Colors.white.withOpacity(0.55),
                       height: 1.5,
                       fontSize: 15,
                       fontStyle: FontStyle.italic,
@@ -177,7 +177,7 @@ class _TidePoolScreenState extends State<TidePoolScreen>
                     decoration: InputDecoration(
                       hintText: 'Search any app to flag...',
                       hintStyle: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.3),
+                        color: Colors.white.withOpacity(0.3),
                       ),
                       prefixIcon: const Icon(
                         Icons.search,
@@ -197,7 +197,7 @@ class _TidePoolScreenState extends State<TidePoolScreen>
                             )
                           : null,
                       filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.05),
+                      fillColor: Colors.white.withOpacity(0.05),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide.none,
@@ -215,7 +215,7 @@ class _TidePoolScreenState extends State<TidePoolScreen>
                       vertical: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.35),
+                      color: Colors.black.withOpacity(0.35),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: Colors.white12),
                     ),
@@ -265,7 +265,7 @@ class _TidePoolScreenState extends State<TidePoolScreen>
                               _hasAccessibility &&
                               StorageService.isRisingTideMasterEnabled(),
                           activeThumbColor: Colors.cyanAccent,
-                          activeTrackColor: Colors.cyan.withValues(alpha: 0.45),
+                          activeTrackColor: Colors.cyan.withOpacity(0.45),
                           inactiveThumbColor: Colors.white24,
                           inactiveTrackColor: Colors.white10,
                           onChanged: (v) async {
@@ -330,7 +330,7 @@ class _TidePoolScreenState extends State<TidePoolScreen>
                                       : 'No apps found matching "$_searchQuery"',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.45),
+                                    color: Colors.white.withOpacity(0.45),
                                     height: 1.45,
                                   ),
                                 ),
@@ -364,13 +364,13 @@ class _TidePoolScreenState extends State<TidePoolScreen>
                                       : 0.0;
                                   return Card(
                                     color: isFlagged
-                                        ? Colors.cyan.withValues(alpha: 0.08)
-                                        : Colors.white.withValues(alpha: 0.04),
+                                        ? Colors.cyan.withOpacity(0.08)
+                                        : Colors.white.withOpacity(0.04),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(14),
                                       side: BorderSide(
                                         color: isFlagged
-                                            ? Colors.cyan.withValues(alpha: 0.3)
+                                            ? Colors.cyan.withOpacity(0.3)
                                             : Colors.white10,
                                       ),
                                     ),
@@ -504,7 +504,7 @@ class _TidePoolScreenState extends State<TidePoolScreen>
                     'Swipe left to return home',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.35),
+                      color: Colors.white.withOpacity(0.35),
                       fontSize: 12,
                     ),
                   ),

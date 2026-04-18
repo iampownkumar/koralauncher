@@ -69,7 +69,7 @@ void showAppLongPressMenu(
                         subtitle: Text(
                           'System settings for this app',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.45),
+                            color: Colors.white.withOpacity(0.45),
                             fontSize: 12,
                           ),
                         ),
@@ -139,12 +139,12 @@ void showAppLongPressMenu(
                         ),
                         decoration: BoxDecoration(
                           color: flagged
-                              ? Colors.cyanAccent.withValues(alpha: 0.1)
-                              : Colors.white.withValues(alpha: 0.06),
+                              ? Colors.cyanAccent.withOpacity(0.1)
+                              : Colors.white.withOpacity(0.06),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: flagged
-                                ? Colors.cyanAccent.withValues(alpha: 0.6)
+                                ? Colors.cyanAccent.withOpacity(0.6)
                                 : Colors.white24,
                             width: flagged ? 2 : 1,
                           ),
@@ -174,7 +174,7 @@ void showAppLongPressMenu(
                           ),
                           value: hasAccess && flagged,
                           activeThumbColor: Colors.cyanAccent,
-                          activeTrackColor: Colors.cyan.withValues(alpha: 0.45),
+                          activeTrackColor: Colors.cyan.withOpacity(0.45),
                           inactiveThumbColor: Colors.white24,
                           inactiveTrackColor: Colors.white10,
                           onChanged: (v) async {

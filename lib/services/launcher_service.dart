@@ -5,6 +5,7 @@ import 'package:installed_apps/installed_apps.dart';
 import 'package:installed_apps/platform_type.dart';
 import '../models/app_entry.dart';
 import 'native_service.dart';
+import 'rising_tide_service.dart';
 
 class LauncherService {
   static List<AppInfo> _cachedApps = [];
@@ -97,6 +98,8 @@ class LauncherService {
   }
 
   static Future<void> launchApp(String packageName) async {
+    // Intentional launch from Launcher UI always bypasses the 5-min grace period
+    await RisingTideService.clearReopenLock(packageName);
     await InstalledApps.startApp(packageName);
   }
 }

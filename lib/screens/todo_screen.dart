@@ -147,7 +147,7 @@ class _TodoScreenState extends State<TodoScreen> {
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
                           'Also updates your daily goal',
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 12),
+                          style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 12),
                         ),
                       ),
                     const SizedBox(height: 14),
@@ -156,7 +156,7 @@ class _TodoScreenState extends State<TodoScreen> {
                       autofocus: true,
                       style: const TextStyle(color: Colors.white, fontSize: 16),
                       decoration: InputDecoration(
-                        filled: true, fillColor: Colors.white.withValues(alpha: 0.07),
+                        filled: true, fillColor: Colors.white.withOpacity(0.07),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         suffixIcon: IconButton(icon: const Icon(Icons.close, color: Colors.white38, size: 18), onPressed: () => ctrl.clear()),
@@ -195,13 +195,13 @@ class _TodoScreenState extends State<TodoScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF0F172A),
         title: const Text('Delete task?', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        content: Text('"$title"', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontStyle: FontStyle.italic)),
+        content: Text('"$title"', style: TextStyle(color: Colors.white.withOpacity(0.6), fontStyle: FontStyle.italic)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Keep it', style: TextStyle(color: Colors.white.withValues(alpha: 0.5)))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Keep it', style: TextStyle(color: Colors.white.withOpacity(0.5)))),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(
-              backgroundColor: Colors.redAccent.withValues(alpha: 0.8), foregroundColor: Colors.white,
+              backgroundColor: Colors.redAccent.withOpacity(0.8), foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             child: const Text('Delete', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -276,13 +276,13 @@ class _TodoScreenState extends State<TodoScreen> {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 24),
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        decoration: BoxDecoration(color: Colors.redAccent.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(16)),
+        decoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.18), borderRadius: BorderRadius.circular(16)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.delete_outline, color: Colors.redAccent),
             const SizedBox(height: 2),
-            Text('Delete', style: TextStyle(color: Colors.redAccent.withValues(alpha: 0.8), fontSize: 10, fontWeight: FontWeight.w600)),
+            Text('Delete', style: TextStyle(color: Colors.redAccent.withOpacity(0.8), fontSize: 10, fontWeight: FontWeight.w600)),
           ],
         ),
       ),
@@ -335,17 +335,17 @@ class _TodoScreenState extends State<TodoScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: isCompleted
-            ? Colors.white.withValues(alpha: 0.02)
+            ? Colors.white.withOpacity(0.02)
             : isIntentionLinked
-                ? Colors.cyanAccent.withValues(alpha: 0.04)
-                : Colors.white.withValues(alpha: 0.06),
+                ? Colors.cyanAccent.withOpacity(0.04)
+                : Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isCompleted
-              ? Colors.white.withValues(alpha: 0.05)
+              ? Colors.white.withOpacity(0.05)
               : isIntentionLinked
-                  ? Colors.cyanAccent.withValues(alpha: 0.2)
-                  : Colors.white.withValues(alpha: 0.1),
+                  ? Colors.cyanAccent.withOpacity(0.2)
+                  : Colors.white.withOpacity(0.1),
         ),
       ),
       child: ListTile(
@@ -356,14 +356,14 @@ class _TodoScreenState extends State<TodoScreen> {
             color: isCompleted
                 ? Colors.white38
                 : isIntentionLinked
-                    ? Colors.cyanAccent.withValues(alpha: 0.8)
+                    ? Colors.cyanAccent.withOpacity(0.8)
                     : Colors.white70,
           ),
         ),
         title: Text(
           todo.title,
           style: TextStyle(
-            color: isCompleted ? Colors.white38 : Colors.white.withValues(alpha: 0.87),
+            color: isCompleted ? Colors.white38 : Colors.white.withOpacity(0.87),
             decoration: isCompleted ? TextDecoration.lineThrough : null,
             fontSize: 15,
             fontWeight: isCompleted ? FontWeight.normal : FontWeight.w500,
@@ -373,7 +373,7 @@ class _TodoScreenState extends State<TodoScreen> {
             ? Text(
                 '🎯 Today\'s intention',
                 style: TextStyle(
-                  color: Colors.cyanAccent.withValues(alpha: 0.6),
+                  color: Colors.cyanAccent.withOpacity(0.6),
                   fontSize: 11,
                 ),
               )
@@ -424,7 +424,7 @@ class _TodoScreenState extends State<TodoScreen> {
             children: [
               const Text('To-Do', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w300, fontSize: 18)),
               if (pendingCount > 0)
-                Text('$pendingCount remaining', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11)),
+                Text('$pendingCount remaining', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11)),
             ],
           ),
           centerTitle: true,
@@ -461,8 +461,8 @@ class _TodoScreenState extends State<TodoScreen> {
                       textInputAction: TextInputAction.done,
                       decoration: InputDecoration(
                         hintText: 'Add a task for today…',
-                        hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.25)),
-                        filled: true, fillColor: Colors.white.withValues(alpha: 0.05),
+                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.25)),
+                        filled: true, fillColor: Colors.white.withOpacity(0.05),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       ),
@@ -487,11 +487,11 @@ class _TodoScreenState extends State<TodoScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.check_circle_outline, size: 64, color: Colors.white.withValues(alpha: 0.1)),
+                          Icon(Icons.check_circle_outline, size: 64, color: Colors.white.withOpacity(0.1)),
                           const SizedBox(height: 16),
-                          Text('Your list is clear.', style: TextStyle(color: Colors.white.withValues(alpha: 0.3))),
+                          Text('Your list is clear.', style: TextStyle(color: Colors.white.withOpacity(0.3))),
                           const SizedBox(height: 8),
-                          Text('Add a task above to get started.', style: TextStyle(color: Colors.white.withValues(alpha: 0.2), fontSize: 13)),
+                          Text('Add a task above to get started.', style: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 13)),
                         ],
                       ),
                     )

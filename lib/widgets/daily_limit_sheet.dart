@@ -105,7 +105,7 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
                   'Daily time limit',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.45),
+                    color: Colors.white.withOpacity(0.45),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -127,7 +127,7 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
                   'Rising Tide gates at 50% and 100% of this limit',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.white.withValues(alpha: 0.3),
+                    color: Colors.white.withOpacity(0.3),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -149,13 +149,13 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
                             horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
                           color: selected
-                              ? Colors.cyanAccent.withValues(alpha: 0.18)
-                              : Colors.white.withValues(alpha: 0.06),
+                              ? Colors.cyanAccent.withOpacity(0.18)
+                              : Colors.white.withOpacity(0.06),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: selected
-                                ? Colors.cyanAccent.withValues(alpha: 0.7)
-                                : Colors.white.withValues(alpha: 0.12),
+                                ? Colors.cyanAccent.withOpacity(0.7)
+                                : Colors.white.withOpacity(0.12),
                             width: selected ? 1.5 : 1,
                           ),
                         ),
@@ -180,15 +180,15 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
                   children: [
                     Text('1m',
                         style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.3),
+                            color: Colors.white.withOpacity(0.3),
                             fontSize: 11)),
                     Expanded(
                       child: SliderTheme(
                         data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: Colors.cyanAccent.withValues(alpha: 0.7),
+                          activeTrackColor: Colors.cyanAccent.withOpacity(0.7),
                           inactiveTrackColor: Colors.white12,
                           thumbColor: Colors.cyanAccent,
-                          overlayColor: Colors.cyanAccent.withValues(alpha: 0.15),
+                          overlayColor: Colors.cyanAccent.withOpacity(0.15),
                           trackHeight: 3,
                           thumbShape: const RoundSliderThumbShape(
                               enabledThumbRadius: 8),
@@ -205,7 +205,7 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
                     ),
                     Text('8h',
                         style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.3),
+                            color: Colors.white.withOpacity(0.3),
                             fontSize: 11)),
                   ],
                 ),
@@ -216,13 +216,13 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: hard
-                          ? Colors.deepOrange.withValues(alpha: 0.15)
-                          : Colors.amber.withValues(alpha: 0.12),
+                          ? Colors.deepOrange.withOpacity(0.15)
+                          : Colors.amber.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: hard
-                            ? Colors.deepOrange.withValues(alpha: 0.45)
-                            : Colors.amber.withValues(alpha: 0.4),
+                            ? Colors.deepOrange.withOpacity(0.45)
+                            : Colors.amber.withOpacity(0.4),
                       ),
                     ),
                     child: Text(
@@ -230,7 +230,7 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
                           ? 'More than 4 hours. You will be asked to confirm.'
                           : '4 hours or more: a large share of your waking day.',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.88),
+                        color: Colors.white.withOpacity(0.88),
                         height: 1.4,
                         fontSize: 13,
                       ),
@@ -261,7 +261,7 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
                   child: Text(
                     'Cancel',
                     style:
-                        TextStyle(color: Colors.white.withValues(alpha: 0.45)),
+                        TextStyle(color: Colors.white.withOpacity(0.45)),
                   ),
                 ),
               ],

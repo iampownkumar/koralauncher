@@ -12,6 +12,7 @@ import 'services/rising_tide_service.dart';
 import 'services/app_lock_manager.dart';
 import 'services/native_service.dart';
 import 'services/todo_service.dart';
+import 'ai/ai_prompt_engine.dart';
 import 'widgets/onboarding_flow.dart';
 
 Future<void> main() async {
@@ -65,6 +66,11 @@ class _KoraStartupShellState extends State<KoraStartupShell> {
       await LauncherService.init();
       await UsageService.refreshUsage();
       await TodoService.init();
+
+      // AI engine — non-blocking, failure-safe.  Checks if Gemini Nano
+      // is available and pre-warms the model if so.  Falls back to
+      // template messages silently if AI isn't supported.
+      await AIPromptEngine.init();
 
       await RisingTideService.syncInterceptionState();
 

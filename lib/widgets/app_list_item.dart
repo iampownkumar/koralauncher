@@ -27,18 +27,18 @@ class AppListItem extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
       decoration: BoxDecoration(
         color: isFlagged
-            ? _kFlagColor.withValues(alpha: 0.08)
+            ? _kFlagColor.withOpacity(0.08)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(16),
         border: isFlagged
-            ? Border.all(color: _kFlagColor.withValues(alpha: 0.4), width: 1.5)
+            ? Border.all(color: _kFlagColor.withOpacity(0.4), width: 1.5)
             : Border.all(color: Colors.transparent, width: 1.5),
       ),
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(16),
-        splashColor: _kFlagColor.withValues(alpha: 0.15),
+        splashColor: _kFlagColor.withOpacity(0.15),
         highlightColor: Colors.transparent,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -51,7 +51,7 @@ class AppListItem extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
+                      color: Colors.black.withOpacity(0.2),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     )
@@ -95,14 +95,14 @@ class AppListItem extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
+                    color: Colors.white.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+                    border: Border.all(color: Colors.white.withOpacity(0.15)),
                   ),
                   child: Text(
                     "${_formatUsage(usage)} today",
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: Colors.white.withOpacity(0.9),
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
@@ -115,7 +115,7 @@ class AppListItem extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _kFlagColor.withValues(alpha: 0.15),
+                    color: _kFlagColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(

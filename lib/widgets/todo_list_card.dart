@@ -91,7 +91,7 @@ class _TodoListCardState extends State<TodoListCard> {
                         child: LinearProgressIndicator(
                           value: total == 0 ? 0 : completed / total,
                           minHeight: 4,
-                          backgroundColor: colorScheme.onSurface.withValues(alpha: 0.1),
+                          backgroundColor: colorScheme.onSurface.withOpacity(0.1),
                           valueColor: AlwaysStoppedAnimation<Color>(
                             colorScheme.primary,
                           ),
@@ -103,7 +103,7 @@ class _TodoListCardState extends State<TodoListCard> {
                     style: TextStyle(
                       color: completed == total && total > 0
                           ? colorScheme.primary
-                          : colorScheme.onSurface.withValues(alpha: 0.8),
+                          : colorScheme.onSurface.withOpacity(0.8),
                       fontSize: 14,
                       fontWeight: completed == total && total > 0
                           ? FontWeight.bold
@@ -133,18 +133,18 @@ class _TodoListCardState extends State<TodoListCard> {
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
                                   color: todo.isCompleted
-                                      ? colorScheme.onSurface.withValues(alpha: 0.05)
-                                      : colorScheme.onSurface.withValues(alpha: 0.15),
+                                      ? colorScheme.onSurface.withOpacity(0.05)
+                                      : colorScheme.onSurface.withOpacity(0.15),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: todo.isCompleted ? Colors.transparent : colorScheme.onSurface.withValues(alpha: 0.1),
+                                    color: todo.isCompleted ? Colors.transparent : colorScheme.onSurface.withOpacity(0.1),
                                   ),
                                 ),
                                 child: Row(
                                   children: [
                                     Icon(
                                       todo.isCompleted ? Icons.check_circle : Icons.circle_outlined,
-                                      color: todo.isCompleted ? colorScheme.primary : colorScheme.onSurface.withValues(alpha: 0.6),
+                                      color: todo.isCompleted ? colorScheme.primary : colorScheme.onSurface.withOpacity(0.6),
                                       size: 20,
                                     ),
                                     const SizedBox(width: 12),
@@ -153,7 +153,7 @@ class _TodoListCardState extends State<TodoListCard> {
                                         todo.title,
                                         style: TextStyle(
                                           color: todo.isCompleted
-                                              ? colorScheme.onSurface.withValues(alpha: 0.4)
+                                              ? colorScheme.onSurface.withOpacity(0.4)
                                               : colorScheme.onSurface,
                                           fontSize: 15,
                                           decoration: todo.isCompleted ? TextDecoration.lineThrough : null,

@@ -14,6 +14,7 @@ import '../services/foreground_intercept_guard.dart';
 import '../services/native_service.dart';
 import '../utils/limit_time_format.dart';
 import '../services/todo_service.dart';
+import '../ai/ai_prompt_engine.dart';
 
 class InterceptionScreen extends StatefulWidget {
   final AppInfo app;
@@ -31,6 +32,10 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
   int _opensToday = 0;
   int _minutesToday = 0;
   String? _dailyIntention;
+
+  // AI-generated interception message
+  String? _aiMessage;
+  bool _isAIGenerated = false;
 
   // Flow control
   int _countdownSeconds = 5;
@@ -66,11 +71,25 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
     final stats = await RisingTideService.getStats(widget.app.packageName);
     _dailyIntention = RisingTideService.getDailyIntention();
 
+    // Generate humanised AI message (cached / on-device AI / template fallback)
+    AIMessage aiMsg = const AIMessage(text: '', source: AIMessageSource.none);
+    try {
+      aiMsg = await AIPromptEngine.generateMessage(
+        packageName: widget.app.packageName,
+        appName: widget.app.name,
+        stage: stage,
+      );
+    } catch (e) {
+      debugPrint('InterceptionScreen: AI message generation failed: $e');
+    }
+
     if (mounted) {
       setState(() {
         _stage = stage;
         _opensToday = stats['opens'] ?? 0;
         _minutesToday = stats['minutes'] ?? 0;
+        _aiMessage = aiMsg.hasMessage ? aiMsg.text : null;
+        _isAIGenerated = aiMsg.isAIGenerated;
         _isLoading = false;
         _startInitialCountdown();
       });
@@ -273,14 +292,16 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: Colors.white.withValues(alpha: 0.5),
+            color: Colors.white.withOpacity(0.5),
             letterSpacing: 2,
           ),
         ),
         const SizedBox(height: 16),
+
+        // AI-generated message (or fallback to original)
         Text(
-          "You've used ${widget.app.name} for "
-          "$_minutesToday ${_minutesToday == 1 ? 'minute' : 'minutes'} today.",
+          _aiMessage ?? "You've used ${widget.app.name} for "
+              "$_minutesToday ${_minutesToday == 1 ? 'minute' : 'minutes'} today.",
           style: const TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.bold,
@@ -289,17 +310,44 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 10),
-        Text(
-          "You have $remaining ${remaining == 1 ? 'minute' : 'minutes'} left "
-          "of your ${LimitTimeFormat.dualLabel(limitMinutes)} limit.",
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.white.withValues(alpha: 0.55),
-            height: 1.5,
+
+        // Subtle AI indicator
+        if (_isAIGenerated) ...[
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.auto_awesome,
+                size: 12,
+                color: Colors.cyanAccent.withOpacity(0.4),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'personalised',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.cyanAccent.withOpacity(0.3),
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
           ),
-          textAlign: TextAlign.center,
-        ),
+        ],
+
+        const SizedBox(height: 10),
+        if (_aiMessage == null) ...[
+          Text(
+            "You have $remaining ${remaining == 1 ? 'minute' : 'minutes'} left "
+            "of your ${LimitTimeFormat.dualLabel(limitMinutes)} limit.",
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.white.withOpacity(0.55),
+              height: 1.5,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
         const SizedBox(height: 20),
         // Progress bar
         LayoutBuilder(
@@ -335,7 +383,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
           'Opens today: $_opensToday · Limit ${LimitTimeFormat.dualLabel(limitMinutes)}',
           style: TextStyle(
             fontSize: 12,
-            color: Colors.white.withValues(alpha: 0.3),
+            color: Colors.white.withOpacity(0.3),
           ),
           textAlign: TextAlign.center,
         ),
@@ -361,9 +409,9 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.redAccent.withValues(alpha: 0.12),
+            color: Colors.redAccent.withOpacity(0.12),
             borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: Colors.redAccent.withValues(alpha: 0.4)),
+            border: Border.all(color: Colors.redAccent.withOpacity(0.4)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -388,13 +436,48 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
         ),
         const SizedBox(height: 28),
 
-        // The mirror question — pulled from their actual to-do list
-        if (hasPendingTodo) ...[
+        // AI-generated mirror message
+        if (_aiMessage != null) ...[
+          Text(
+            _aiMessage!,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          // Subtle AI indicator
+          if (_isAIGenerated) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.auto_awesome,
+                  size: 12,
+                  color: Colors.cyanAccent.withOpacity(0.4),
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'personalised',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.cyanAccent.withOpacity(0.3),
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ] else if (hasPendingTodo) ...[
+          // Fallback: show todo-based mirror (original behaviour)
           Text(
             'You said you\'d do this today:',
             style: TextStyle(
               fontSize: 13,
-              color: Colors.white.withValues(alpha: 0.4),
+              color: Colors.white.withOpacity(0.4),
               letterSpacing: 0.5,
             ),
             textAlign: TextAlign.center,
@@ -404,9 +487,9 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.06),
+              color: Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              border: Border.all(color: Colors.white.withOpacity(0.1)),
             ),
             child: Text(
               (topTodo as dynamic).title as String,
@@ -424,7 +507,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
             'Does opening ${widget.app.name} help with that?',
             style: TextStyle(
               fontSize: 15,
-              color: Colors.white.withValues(alpha: 0.5),
+              color: Colors.white.withOpacity(0.5),
               height: 1.5,
             ),
             textAlign: TextAlign.center,
@@ -435,7 +518,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
             'Your note for today:',
             style: TextStyle(
               fontSize: 13,
-              color: Colors.white.withValues(alpha: 0.4),
+              color: Colors.white.withOpacity(0.4),
             ),
             textAlign: TextAlign.center,
           ),
@@ -455,7 +538,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
             'Does opening ${widget.app.name} align with this?',
             style: TextStyle(
               fontSize: 15,
-              color: Colors.white.withValues(alpha: 0.5),
+              color: Colors.white.withOpacity(0.5),
             ),
             textAlign: TextAlign.center,
           ),
@@ -466,7 +549,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w300,
-              color: Colors.white.withValues(alpha: 0.7),
+              color: Colors.white.withOpacity(0.7),
               height: 1.4,
             ),
             textAlign: TextAlign.center,
@@ -476,7 +559,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
             'Think for a moment before continuing.',
             style: TextStyle(
               fontSize: 15,
-              color: Colors.white.withValues(alpha: 0.4),
+              color: Colors.white.withOpacity(0.4),
             ),
             textAlign: TextAlign.center,
           ),
@@ -553,12 +636,12 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
       icon: Icon(
         Icons.tune,
         size: 18,
-        color: Colors.white.withValues(alpha: 0.4),
+        color: Colors.white.withOpacity(0.4),
       ),
       label: Text(
         'Edit limit & optional note',
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.4),
+          color: Colors.white.withOpacity(0.4),
           fontSize: 13,
         ),
       ),
@@ -709,7 +792,7 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
           decoration: BoxDecoration(
             color: isPrimary
                 ? Colors.white
-                : Colors.white.withValues(alpha: 0.05),
+                : Colors.white.withOpacity(0.05),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: Colors.white10),
           ),

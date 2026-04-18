@@ -206,6 +206,11 @@ class NativeService {
   /// Launches a pinned shortcut via its stored intent URI or modern shortcut ID.
   static Future<void> launchShortcut({String? intentUri, String? targetPackage, String? shortcutId}) async {
     try {
+      // Intentional launch from Launcher UI always bypasses the 5-min grace period
+      if (targetPackage != null) {
+        await RisingTideService.clearReopenLock(targetPackage);
+      }
+      
       await platform.invokeMethod('launchShortcut', {
         'intentUri': intentUri,
         'targetPackage': targetPackage,

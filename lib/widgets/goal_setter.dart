@@ -135,12 +135,12 @@ class _GoalSetterState extends State<GoalSetter>
               width: MediaQuery.of(context).size.width * 0.88,
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: const Color(0xFF0F172A).withValues(alpha: 0.95),
+                color: const Color(0xFF0F172A).withOpacity(0.95),
                 borderRadius: BorderRadius.circular(28),
                 border: Border.all(color: Colors.white10),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.4),
+                    color: Colors.black.withOpacity(0.4),
                     blurRadius: 40,
                     spreadRadius: 10,
                   ),
@@ -187,7 +187,7 @@ class _GoalSetterState extends State<GoalSetter>
                     decoration: InputDecoration(
                       hintText: "e.g. Finish my project",
                       hintStyle: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.2),
+                        color: Colors.white.withOpacity(0.2),
                       ),
                       border: InputBorder.none,
                       contentPadding:
@@ -227,7 +227,7 @@ class _GoalSetterState extends State<GoalSetter>
                       child: Text(
                         widget.isMandatory ? "Skip for now" : "Cancel",
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.4),
+                          color: Colors.white.withOpacity(0.4),
                           fontSize: 13,
                         ),
                       ),
@@ -264,7 +264,7 @@ class _GoalSetterState extends State<GoalSetter>
                   backgroundColor: Colors.white10,
                   valueColor: AlwaysStoppedAnimation(
                     countingDown
-                        ? Colors.cyanAccent.withValues(alpha: 0.8)
+                        ? Colors.cyanAccent.withOpacity(0.8)
                         : Colors.white24,
                   ),
                 ),

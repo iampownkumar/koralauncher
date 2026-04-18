@@ -13,7 +13,7 @@ class SectionHeader extends StatelessWidget {
       child: Text(
         label.toUpperCase(),
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.4),
+          color: Colors.white.withOpacity(0.4),
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.8,
@@ -52,17 +52,17 @@ class PermissionStatusCard extends StatelessWidget {
         child: InkWell(
           onTap: onAction,
           borderRadius: BorderRadius.circular(16),
-          splashColor: Colors.white.withValues(alpha: 0.05),
-          highlightColor: Colors.white.withValues(alpha: 0.03),
+          splashColor: Colors.white.withOpacity(0.05),
+          highlightColor: Colors.white.withOpacity(0.03),
           child: Container(
             padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
+              color: Colors.white.withOpacity(0.04),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isEnabled
-                    ? Colors.cyanAccent.withValues(alpha: 0.35)
-                    : Colors.white.withValues(alpha: 0.1),
+                    ? Colors.cyanAccent.withOpacity(0.35)
+                    : Colors.white.withOpacity(0.1),
               ),
             ),
             child: Row(
@@ -96,7 +96,7 @@ class PermissionStatusCard extends StatelessWidget {
                       Text(
                         description,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.45),
+                          color: Colors.white.withOpacity(0.45),
                           fontSize: 12,
                           height: 1.4,
                         ),
@@ -110,8 +110,8 @@ class PermissionStatusCard extends StatelessWidget {
                                 ? Icons.check_circle_outline
                                 : Icons.arrow_forward_ios,
                             color: isEnabled
-                                ? Colors.cyanAccent.withValues(alpha: 0.7)
-                                : Colors.cyanAccent.withValues(alpha: 0.6),
+                                ? Colors.cyanAccent.withOpacity(0.7)
+                                : Colors.cyanAccent.withOpacity(0.6),
                             size: 12,
                           ),
                           const SizedBox(width: 6),
@@ -121,8 +121,8 @@ class PermissionStatusCard extends StatelessWidget {
                                 : 'Tap to $actionLabel'.toLowerCase(),
                             style: TextStyle(
                               color: isEnabled
-                                  ? Colors.cyanAccent.withValues(alpha: 0.7)
-                                  : Colors.cyanAccent.withValues(alpha: 0.8),
+                                  ? Colors.cyanAccent.withOpacity(0.7)
+                                  : Colors.cyanAccent.withOpacity(0.8),
                               fontSize: 11,
                               fontWeight:
                                   isEnabled ? FontWeight.w600 : FontWeight.w700,
@@ -152,13 +152,13 @@ class _StatusChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: isEnabled
-            ? Colors.cyanAccent.withValues(alpha: 0.12)
-            : Colors.white.withValues(alpha: 0.06),
+            ? Colors.cyanAccent.withOpacity(0.12)
+            : Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
           color: isEnabled
-              ? Colors.cyanAccent.withValues(alpha: 0.4)
-              : Colors.white.withValues(alpha: 0.12),
+              ? Colors.cyanAccent.withOpacity(0.4)
+              : Colors.white.withOpacity(0.12),
         ),
       ),
       child: Text(
@@ -200,14 +200,14 @@ class SettingsPermissionRow extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(14),
-          splashColor: Colors.white.withValues(alpha: 0.05),
-          highlightColor: Colors.white.withValues(alpha: 0.03),
+          splashColor: Colors.white.withOpacity(0.05),
+          highlightColor: Colors.white.withOpacity(0.03),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
+              color: Colors.white.withOpacity(0.04),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
             ),
             child: Row(
               children: [
@@ -227,7 +227,7 @@ class SettingsPermissionRow extends StatelessWidget {
                       Text(
                         subtitle,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.4),
+                          color: Colors.white.withOpacity(0.4),
                           fontSize: 12,
                         ),
                       ),
@@ -237,7 +237,7 @@ class SettingsPermissionRow extends StatelessWidget {
                 const SizedBox(width: 12),
                 _StatusChip(isEnabled: isEnabled),
                 const SizedBox(width: 8),
-                Icon(Icons.arrow_forward_ios, color: Colors.cyanAccent.withValues(alpha: 0.6), size: 13),
+                Icon(Icons.arrow_forward_ios, color: Colors.cyanAccent.withOpacity(0.6), size: 13),
               ],
             ),
           ),

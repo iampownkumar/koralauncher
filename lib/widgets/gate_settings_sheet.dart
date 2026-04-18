@@ -102,7 +102,7 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                   'Set your daily boundary',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Colors.white.withValues(alpha: 0.45),
+                    color: Colors.white.withOpacity(0.45),
                     letterSpacing: 0.2,
                   ),
                   textAlign: TextAlign.center,
@@ -143,7 +143,7 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
-                        color: Colors.white.withValues(alpha: 0.3),
+                        color: Colors.white.withOpacity(0.3),
                       ),
                     ),
                   ],
@@ -154,7 +154,7 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.4),
+                    color: Colors.white.withOpacity(0.4),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -165,13 +165,13 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: hard
-                          ? Colors.deepOrange.withValues(alpha: 0.1)
-                          : Colors.amber.withValues(alpha: 0.08),
+                          ? Colors.deepOrange.withOpacity(0.1)
+                          : Colors.amber.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: hard
-                            ? Colors.deepOrange.withValues(alpha: 0.3)
-                            : Colors.amber.withValues(alpha: 0.2),
+                            ? Colors.deepOrange.withOpacity(0.3)
+                            : Colors.amber.withOpacity(0.2),
                       ),
                     ),
                     child: Row(
@@ -190,7 +190,7 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                                 ? 'Very high limit. You will need to confirm twice.'
                                 : 'High usage detected. This is a large part of your day.',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.75),
+                              color: Colors.white.withOpacity(0.75),
                               fontSize: 12.5,
                               height: 1.4,
                             ),
@@ -207,7 +207,7 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white.withValues(alpha: 0.3),
+                    color: Colors.white.withOpacity(0.3),
                     letterSpacing: 2.0,
                   ),
                 ),
@@ -220,11 +220,11 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                   decoration: InputDecoration(
                     hintText: 'Why do you need this app today?',
                     hintStyle: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.2),
+                      color: Colors.white.withOpacity(0.2),
                     ),
                     filled: true,
                     counterStyle: const TextStyle(color: Colors.white24),
-                    fillColor: Colors.white.withValues(alpha: 0.04),
+                    fillColor: Colors.white.withOpacity(0.04),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide.none,
@@ -271,7 +271,7 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
                   child: Text(
                     'Cancel',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.45),
+                      color: Colors.white.withOpacity(0.45),
                     ),
                   ),
                 ),

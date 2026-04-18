@@ -72,13 +72,13 @@ class _TodoHistoryScreenState extends State<TodoHistoryScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.history_toggle_off, size: 64, color: Colors.white.withValues(alpha: 0.1)),
+                    Icon(Icons.history_toggle_off, size: 64, color: Colors.white.withOpacity(0.1)),
                     const SizedBox(height: 16),
-                    Text('No history yet.', style: TextStyle(color: Colors.white.withValues(alpha: 0.3))),
+                    Text('No history yet.', style: TextStyle(color: Colors.white.withOpacity(0.3))),
                     const SizedBox(height: 8),
                     Text('Completed and missed tasks will appear here\nafter the midnight reset.', 
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.2), fontSize: 13)
+                      style: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 13)
                     ),
                   ],
                 ),
@@ -128,13 +128,13 @@ class _TodoHistoryScreenState extends State<TodoHistoryScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '$completedCount / $totalCount completed',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: Colors.white.withOpacity(0.5),
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -147,9 +147,9 @@ class _TodoHistoryScreenState extends State<TodoHistoryScreen> {
           // Tasks Card
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
+              color: Colors.white.withOpacity(0.04),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
             ),
             child: Column(
               children: tasks.map((task) => _buildTaskRow(task)).toList(),
@@ -171,8 +171,8 @@ class _TodoHistoryScreenState extends State<TodoHistoryScreen> {
             task.completed ? Icons.check_circle : Icons.cancel_outlined,
             size: 20,
             color: task.completed 
-                ? (isIntention ? Colors.cyanAccent.withValues(alpha: 0.6) : Colors.white38) 
-                : Colors.white.withValues(alpha: 0.15),
+                ? (isIntention ? Colors.cyanAccent.withOpacity(0.6) : Colors.white38) 
+                : Colors.white.withOpacity(0.15),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -183,8 +183,8 @@ class _TodoHistoryScreenState extends State<TodoHistoryScreen> {
                   task.taskTitle,
                   style: TextStyle(
                     color: task.completed 
-                        ? Colors.white.withValues(alpha: 0.6) 
-                        : Colors.white.withValues(alpha: 0.3),
+                        ? Colors.white.withOpacity(0.6) 
+                        : Colors.white.withOpacity(0.3),
                     decoration: task.completed ? TextDecoration.lineThrough : null,
                     fontSize: 15,
                   ),
@@ -195,7 +195,7 @@ class _TodoHistoryScreenState extends State<TodoHistoryScreen> {
                     child: Text(
                       '🎯 Daily Intention',
                       style: TextStyle(
-                        color: Colors.cyanAccent.withValues(alpha: 0.5),
+                        color: Colors.cyanAccent.withOpacity(0.5),
                         fontSize: 11,
                       ),
                     ),

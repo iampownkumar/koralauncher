@@ -100,14 +100,14 @@ class _PermissionsAndPrivacyScreenState
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
+              color: Colors.white.withOpacity(0.04),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: !_hasAccessibility
-                    ? Colors.white.withValues(alpha: 0.06) // muted when locked
+                    ? Colors.white.withOpacity(0.06) // muted when locked
                     : _risingTideMaster
-                        ? Colors.cyanAccent.withValues(alpha: 0.3)
-                        : Colors.white.withValues(alpha: 0.08),
+                        ? Colors.cyanAccent.withOpacity(0.3)
+                        : Colors.white.withOpacity(0.08),
               ),
             ),
             child: SwitchListTile(
@@ -136,7 +136,7 @@ class _PermissionsAndPrivacyScreenState
               // Force OFF and non-interactive when accessibility is missing
               value: _hasAccessibility && _risingTideMaster,
               activeThumbColor: Colors.cyanAccent,
-              activeTrackColor: Colors.cyan.withValues(alpha: 0.4),
+              activeTrackColor: Colors.cyan.withOpacity(0.4),
               inactiveThumbColor: Colors.white38,
               inactiveTrackColor: Colors.white12,
               onChanged: _hasAccessibility ? _toggleMaster : null,
@@ -148,7 +148,7 @@ class _PermissionsAndPrivacyScreenState
               child: Text(
                 'Rising Tide is off. Flagged apps will open normally.',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.3),
+                  color: Colors.white.withOpacity(0.3),
                   fontSize: 12,
                 ),
               ),
@@ -206,7 +206,7 @@ class _PermissionsAndPrivacyScreenState
             child: Text(
               'These controls are optional. You can turn them on or off anytime in Android settings.',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.3),
+                color: Colors.white.withOpacity(0.3),
                 fontSize: 12,
                 height: 1.5,
               ),
@@ -219,9 +219,9 @@ class _PermissionsAndPrivacyScreenState
             margin: const EdgeInsets.fromLTRB(20, 6, 20, 24),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.03),
+              color: Colors.white.withOpacity(0.03),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+              border: Border.all(color: Colors.white.withOpacity(0.07)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,7 +229,7 @@ class _PermissionsAndPrivacyScreenState
                 Text(
                   'Kora uses device permissions only for features you turn on, like screen-time insights and focus protection.',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.55),
+                    color: Colors.white.withOpacity(0.55),
                     fontSize: 13,
                     height: 1.55,
                   ),
@@ -238,7 +238,7 @@ class _PermissionsAndPrivacyScreenState
                 Text(
                   'Kora does not use Accessibility for advertising or marketing.',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.55),
+                    color: Colors.white.withOpacity(0.55),
                     fontSize: 13,
                     height: 1.55,
                   ),

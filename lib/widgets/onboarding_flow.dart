@@ -229,10 +229,10 @@ class _WelcomePage extends StatelessWidget {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: Colors.cyanAccent.withValues(alpha: 0.1),
+                color: Colors.cyanAccent.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Colors.cyanAccent.withValues(alpha: 0.35),
+                  color: Colors.cyanAccent.withOpacity(0.35),
                 ),
               ),
               child: const Icon(
@@ -255,7 +255,7 @@ class _WelcomePage extends StatelessWidget {
             Text(
               'A minimal launcher that helps you pause\nbefore distraction.',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.55),
+                color: Colors.white.withOpacity(0.55),
                 fontSize: 16,
                 height: 1.5,
               ),
@@ -310,7 +310,7 @@ class _IntentionPage extends StatelessWidget {
             Text(
               'Set a small intention for today.\nYou can change this later.',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
+                color: Colors.white.withOpacity(0.5),
                 fontSize: 15,
                 height: 1.5,
               ),
@@ -327,10 +327,10 @@ class _IntentionPage extends StatelessWidget {
               decoration: InputDecoration(
                 hintText: 'Finish the app update',
                 hintStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: Colors.white.withOpacity(0.2),
                 ),
                 filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.05),
+                fillColor: Colors.white.withOpacity(0.05),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
@@ -392,7 +392,7 @@ class _PermissionsPage extends StatelessWidget {
             child: Text(
               'Turn on the features you want.\nYou can change these anytime in Settings.',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
+                color: Colors.white.withOpacity(0.5),
                 fontSize: 14,
                 height: 1.5,
               ),
@@ -476,10 +476,10 @@ class _DonePage extends StatelessWidget {
               width: 56,
               height: 56,
               decoration: BoxDecoration(
-                color: Colors.cyanAccent.withValues(alpha: 0.12),
+                color: Colors.cyanAccent.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Colors.cyanAccent.withValues(alpha: 0.4),
+                  color: Colors.cyanAccent.withOpacity(0.4),
                 ),
               ),
               child: const Icon(
@@ -501,7 +501,7 @@ class _DonePage extends StatelessWidget {
             Text(
               'Start simple.\nKora will set its focused wallpaper to your home and lock screen to reduce visual clutter.\n\nYou can enable more controls anytime.',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
+                color: Colors.white.withOpacity(0.5),
                 fontSize: 16,
                 height: 1.5,
               ),
@@ -560,7 +560,7 @@ class _GhostButton extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.4),
+            color: Colors.white.withOpacity(0.4),
             fontSize: 14,
           ),
         ),

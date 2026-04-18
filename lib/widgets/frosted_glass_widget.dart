@@ -24,7 +24,7 @@ class FrostedGlassWidget extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: Colors.black.withValues(alpha: overlayOpacity),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            border: Border.all(color: Colors.white.withOpacity(0.1)),
           ),
           padding: padding,
           child: child,

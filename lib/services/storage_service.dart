@@ -91,9 +91,13 @@ class StorageService {
     return _prefs.getString('intention_$today');
   }
 
-  static Future<void> setDailyIntention(String intention) async {
+  static Future<void> setDailyIntention(String? intention) async {
     final today = _localDayKey(DateTime.now());
-    await _prefs.setString('intention_$today', intention);
+    if (intention == null) {
+      await _prefs.remove('intention_$today');
+    } else {
+      await _prefs.setString('intention_$today', intention);
+    }
   }
 
   static bool hasSetIntentionToday() {
@@ -160,4 +164,8 @@ class StorageService {
   static Future<void> reloadPrefs() async {
     await _prefs.reload();
   }
+
+  /// Returns all SharedPreferences keys.  Used by MidnightResetService
+  /// to clean up date-scoped keys.
+  static Set<String> getKeys() => _prefs.getKeys();
 }

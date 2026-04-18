@@ -51,7 +51,7 @@ Future<bool> showHighLimitConfirmDialog(
           onPressed: () => Navigator.pop(ctx, false),
           child: Text(
             'Pick a smaller limit',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+            style: TextStyle(color: Colors.white.withOpacity(0.6)),
           ),
         ),
         FilledButton(

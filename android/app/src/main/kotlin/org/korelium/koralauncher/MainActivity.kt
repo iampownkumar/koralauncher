@@ -37,7 +37,8 @@ class MainActivity: FlutterActivity() {
         // Removed expensive wallpaper setting that was causing cold-start lag.
         // The background is already handled by the Flutter UI and LaunchTheme.
 
-        // The background is already handled by the Flutter UI and LaunchTheme.
+        // Register the on-device AI bridge (Gemini Nano / AICore)
+        GeminiNanoBridge.register(flutterEngine, applicationContext)
 
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
         methodChannel?.setMethodCallHandler { call, result ->

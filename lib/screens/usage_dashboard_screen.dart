@@ -139,7 +139,7 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen>
                     child: Text(
                       "APP USAGE",
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.4),
+                        color: Colors.white.withOpacity(0.4),
                         letterSpacing: 3,
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -232,7 +232,7 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen>
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white10),
       ),
@@ -256,7 +256,7 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen>
           const SizedBox(height: 4),
           Text(
             "Switch back to your system launcher or choose another one.",
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13),
+            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
           ),
           const SizedBox(height: 16),
           Row(
@@ -300,7 +300,7 @@ class _UsageDashboardScreenState extends State<UsageDashboardScreen>
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white10),
       ),

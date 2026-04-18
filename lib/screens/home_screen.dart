@@ -93,10 +93,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.black.withValues(alpha: 0.6),
+                            Colors.black.withOpacity(0.6),
                             Colors.transparent,
                             Colors.transparent,
-                            Colors.black.withValues(alpha: 0.5),
+                            Colors.black.withOpacity(0.5),
                           ],
                           stops: const [0.0, 0.2, 0.8, 1.0],
                         ),
@@ -230,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.1),
+          color: Colors.white.withOpacity(0.1),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
@@ -246,9 +246,9 @@ class _HomeScreenState extends State<HomeScreen> {
       margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
       decoration: BoxDecoration(
-        color: Colors.cyanAccent.withValues(alpha: 0.07),
+        color: Colors.cyanAccent.withOpacity(0.07),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
+        border: Border.all(color: Colors.cyanAccent.withOpacity(0.3)),
       ),
       child: Row(
         children: [
@@ -373,7 +373,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Widget pillContent = Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -381,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Icon(
             Icons.flag,
             size: 16,
-            color: hasGoal ? Colors.white : Colors.white.withValues(alpha: 0.6),
+            color: hasGoal ? Colors.white : Colors.white.withOpacity(0.6),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -392,7 +392,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(
                 color: hasGoal
                     ? Colors.white
-                    : Colors.white.withValues(alpha: 0.5),
+                    : Colors.white.withOpacity(0.5),
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
@@ -448,13 +448,13 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
           color: hasPermission
-              ? Colors.black.withValues(alpha: 0.3)
-              : Colors.redAccent.withValues(alpha: 0.2),
+              ? Colors.black.withOpacity(0.3)
+              : Colors.redAccent.withOpacity(0.2),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: hasPermission
-                ? Colors.white.withValues(alpha: 0.2)
-                : Colors.redAccent.withValues(alpha: 0.4),
+                ? Colors.white.withOpacity(0.2)
+                : Colors.redAccent.withOpacity(0.4),
           ),
         ),
         child: Row(
@@ -538,7 +538,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.1),
+          color: Colors.white.withOpacity(0.1),
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: Colors.white, size: 28),

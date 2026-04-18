@@ -173,7 +173,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen>
               BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                 child: Container(
-                  color: Colors.black.withValues(alpha: 0.5),
+                  color: Colors.black.withOpacity(0.5),
                   width: double.infinity,
                   height: double.infinity,
                 ),
@@ -231,7 +231,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen>
           hintText: 'Search apps...',
           prefixIcon: const Icon(Icons.search, color: Colors.white54),
           filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.05),
+          fillColor: Colors.white.withOpacity(0.05),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
             borderSide: BorderSide.none,

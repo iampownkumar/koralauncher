@@ -50,10 +50,10 @@ class AccessibilityDisclosureSheet extends StatelessWidget {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: Colors.cyanAccent.withValues(alpha: 0.1),
+                    color: Colors.cyanAccent.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Colors.cyanAccent.withValues(alpha: 0.3),
+                      color: Colors.cyanAccent.withOpacity(0.3),
                     ),
                   ),
                   child: const Icon(
@@ -95,9 +95,9 @@ class AccessibilityDisclosureSheet extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.04),
+                color: Colors.white.withOpacity(0.04),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
               ),
               child: Row(
                 children: [
@@ -111,7 +111,7 @@ class AccessibilityDisclosureSheet extends StatelessWidget {
                     child: Text(
                       'Kora does not use this access for ads or marketing.',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.55),
+                        color: Colors.white.withOpacity(0.55),
                         fontSize: 12,
                         height: 1.4,
                       ),
@@ -168,7 +168,7 @@ class AccessibilityDisclosureSheet extends StatelessWidget {
               child: Text(
                 'After enabling, return to Kora.',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.3),
+                  color: Colors.white.withOpacity(0.3),
                   fontSize: 12,
                 ),
               ),
@@ -183,7 +183,7 @@ class AccessibilityDisclosureSheet extends StatelessWidget {
     return Text(
       text,
       style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.7),
+        color: Colors.white.withOpacity(0.7),
         fontSize: 14,
         height: 1.5,
       ),
