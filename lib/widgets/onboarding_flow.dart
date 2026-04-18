@@ -3,6 +3,7 @@ import '../services/native_service.dart';
 import '../services/storage_service.dart';
 import '../database/database_provider.dart';
 import '../services/rising_tide_service.dart';
+import '../services/todo_service.dart';
 import 'accessibility_disclosure_sheet.dart';
 import 'permission_widgets.dart';
 import 'package:flutter/services.dart';
@@ -158,6 +159,7 @@ class _OnboardingFlowState extends State<OnboardingFlow>
                     if (text.isNotEmpty) {
                       await StorageService.setDailyIntention(text);
                       await db.saveIntention(text);
+                      await TodoService.addIntentionTodo(text);
                       RisingTideService.invalidateIntentionCache();
                     }
                     _next();
