@@ -163,11 +163,65 @@ class NativeService {
     }
   }
 
+  /// Queries all launchable apps via [PackageManager.queryIntentActivities]
+  /// (ACTION_MAIN + CATEGORY_LAUNCHER). This is identical to how AOSP
+  /// launchers enumerate apps and correctly includes WebAPKs / browser
+  /// desktop shortcuts that the [installed_apps] plugin misses.
+  ///
+  /// Returns a list of maps with keys: `packageName`, `name`, `icon` (Uint8List?).
+  static Future<List<Map<String, dynamic>>> queryLauncherApps() async {
+    try {
+      final raw = await platform.invokeMethod<List<dynamic>>('queryLauncherApps');
+      if (raw == null) return [];
+      return raw
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    } catch (e) {
+      debugPrint('NativeService.queryLauncherApps error: $e');
+      return [];
+    }
+  }
+
   static Future<void> sendBlockedApps(List<String> packages) async {
     try {
       await platform.invokeMethod('sendBlockedApps', {'packages': packages});
     } catch (e) {
       print("NativeService Error: $e");
+    }
+  }
+
+  /// Returns all pinned shortcuts stored by [ShortcutReceiver] / pin request handler.
+  /// Each map has: id, name, intentUri, icon (Uint8List?), isShortcut (true).
+  static Future<List<Map<String, dynamic>>> getStoredShortcuts() async {
+    try {
+      final raw = await platform.invokeMethod<List<dynamic>>('getStoredShortcuts');
+      if (raw == null) return [];
+      return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    } catch (e) {
+      debugPrint('NativeService.getStoredShortcuts error: $e');
+      return [];
+    }
+  }
+
+  /// Launches a pinned shortcut via its stored intent URI or modern shortcut ID.
+  static Future<void> launchShortcut({String? intentUri, String? targetPackage, String? shortcutId}) async {
+    try {
+      await platform.invokeMethod('launchShortcut', {
+        'intentUri': intentUri,
+        'targetPackage': targetPackage,
+        'shortcutId': shortcutId,
+      });
+    } catch (e) {
+      debugPrint('NativeService.launchShortcut error: $e');
+    }
+  }
+
+  /// Removes a pinned shortcut from the store by its ID.
+  static Future<void> removeShortcut(String id) async {
+    try {
+      await platform.invokeMethod('removeShortcut', {'id': id});
+    } catch (e) {
+      debugPrint('NativeService.removeShortcut error: $e');
     }
   }
 

@@ -6,7 +6,7 @@ const _kFlagColor = Colors.cyanAccent;
 class AppListItem extends StatelessWidget {
   final AppInfo app;
   final VoidCallback onTap;
-  final VoidCallback onLongPress;
+  final VoidCallback? onLongPress;
   final VoidCallback? onFlagTap;
   final bool isFlagged;
   final Duration usage;
@@ -15,7 +15,7 @@ class AppListItem extends StatelessWidget {
     super.key,
     required this.app,
     required this.onTap,
-    required this.onLongPress,
+    this.onLongPress,
     this.onFlagTap,
     this.isFlagged = false,
     this.usage = Duration.zero,

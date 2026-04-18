@@ -6,6 +6,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.AdaptiveIconDrawable
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
@@ -14,6 +19,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.android.TransparencyMode
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.ByteArrayOutputStream
 
 class MainActivity: FlutterActivity() {
     companion object {
@@ -105,6 +111,113 @@ class MainActivity: FlutterActivity() {
                         }
                     } else {
                         result.success(false)
+                    }
+                }
+                "queryLauncherApps" -> {
+                    try {
+                        result.success(queryAllLauncherApps())
+                    } catch (e: Exception) {
+                        result.error("QUERY_ERROR", e.message, null)
+                    }
+                }
+                "getAppIcon" -> {
+                    val pkg = call.argument<String>("package")
+                    if (pkg != null) {
+                        try {
+                            result.success(getAppIconBytes(pkg))
+                        } catch (e: Exception) {
+                            result.success(null)
+                        }
+                    } else {
+                        result.success(null)
+                    }
+                }
+                "getStoredShortcuts" -> {
+                    val shortcuts = org.korelium.koralauncher.ShortcutStore.getAll(applicationContext).toMutableList()
+                    
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N_MR1) {
+                        try {
+                            val la = getSystemService(android.content.Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+                            val query = android.content.pm.LauncherApps.ShortcutQuery()
+                            query.setQueryFlags(android.content.pm.LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED)
+                            
+                            val userManager = getSystemService(android.content.Context.USER_SERVICE) as android.os.UserManager
+                            for (user in userManager.userProfiles) {
+                                val pinnedShortcuts = la.getShortcuts(query, user)
+                                if (pinnedShortcuts != null) {
+                                    for (info in pinnedShortcuts) {
+                                        val name = info.shortLabel?.toString() ?: info.longLabel?.toString() ?: "Shortcut"
+                                        val targetPackage = info.`package` ?: info.activity?.packageName
+                                        val shortcutId = info.id
+                                        
+                                        if (targetPackage != null && shortcuts.none { it["shortcutId"] == shortcutId && it["targetPackage"] == targetPackage }) {
+                                            val drawable = la.getShortcutIconDrawable(info, resources.displayMetrics.densityDpi)
+                                            val iconBytes = drawable?.let { 
+                                                val bmp = org.korelium.koralauncher.ShortcutStore.drawableToBitmap(it, 192)
+                                                org.korelium.koralauncher.ShortcutStore.bitmapToBytes(bmp)
+                                            }
+
+                                            shortcuts.add(mapOf(
+                                                "id" to info.id,
+                                                "name" to name,
+                                                "targetPackage" to targetPackage,
+                                                "shortcutId" to shortcutId,
+                                                "icon" to iconBytes,
+                                                "isShortcut" to true
+                                            ))
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("KoraShortcut", "Failed to get system shortcuts", e)
+                        }
+                    }
+
+                    val forFlutter = shortcuts.map { s ->
+                        val b64 = s["iconBase64"] as? String
+                        val iconBytes = s["icon"] as? ByteArray ?: if (!b64.isNullOrBlank()) org.korelium.koralauncher.ShortcutStore.base64ToBytes(b64) else null
+                        mapOf(
+                            "id"         to (s["id"] as? String ?: ""),
+                            "name"       to (s["name"] as? String ?: ""),
+                            "intentUri"  to (s["intentUri"] as? String),
+                            "targetPackage" to (s["targetPackage"] as? String),
+                            "shortcutId" to (s["shortcutId"] as? String),
+                            "icon"       to iconBytes,
+                            "isShortcut" to true,
+                        )
+                    }
+                    result.success(forFlutter)
+                }
+                "launchShortcut" -> {
+                    val uri = call.argument<String>("intentUri")
+                    val targetPackage = call.argument<String>("targetPackage")
+                    val shortcutId = call.argument<String>("shortcutId")
+
+                    try {
+                        if (!targetPackage.isNullOrBlank() && !shortcutId.isNullOrBlank() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+                            val la = getSystemService(Context.LAUNCHER_APPS_SERVICE) as android.content.pm.LauncherApps
+                            la.startShortcut(targetPackage, shortcutId, null, null, android.os.Process.myUserHandle())
+                            result.success(null)
+                        } else if (!uri.isNullOrBlank()) {
+                            val launchIntent = Intent.parseUri(uri, Intent.URI_INTENT_SCHEME)
+                            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            startActivity(launchIntent)
+                            result.success(null)
+                        } else {
+                            result.error("MISSING_ARG", "Either targetPackage+shortcutId or intentUri required", null)
+                        }
+                    } catch (e: Exception) {
+                        result.error("LAUNCH_ERROR", e.message, null)
+                    }
+                }
+                "removeShortcut" -> {
+                    val id = call.argument<String>("id")
+                    if (id != null) {
+                        ShortcutStore.remove(applicationContext, id)
+                        result.success(null)
+                    } else {
+                        result.error("MISSING_ARG", "id required", null)
                     }
                 }
                 else -> {
@@ -257,12 +370,17 @@ class MainActivity: FlutterActivity() {
         return enabledServices?.contains(serviceName) == true
     }
 
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        // If the user clicks "Home" while already in the launcher, intent will be ACTION_MAIN + CATEGORY_HOME.
-        // We detect this to tell Flutter to close any open drawers or overlays.
+
+        // Home button pressed while already in launcher — close open drawers
         if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) {
             methodChannel?.invokeMethod("onHomePressed", null)
+            return
         }
     }
 
@@ -277,5 +395,78 @@ class MainActivity: FlutterActivity() {
         } catch (e: Exception) {
             // Fallback
         }
+    }
+
+    // ─────────────────────────────────────────────
+    // LAUNCHER APP QUERY
+    // Uses ACTION_MAIN + CATEGORY_LAUNCHER — the same query AOSP launchers
+    // use. This catches WebAPKs (Chrome PWAs / browser desktop shortcuts)
+    // that InstalledApps.getInstalledApps() misses because they don't always
+    // register through the standard ApplicationInfo flow.
+    // ─────────────────────────────────────────────
+    private fun queryAllLauncherApps(): List<Map<String, Any?>> {
+        val intent = Intent(Intent.ACTION_MAIN, null)
+        intent.addCategory(Intent.CATEGORY_LAUNCHER)
+
+        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PackageManager.MATCH_ALL
+        } else {
+            0
+        }
+
+        val resolveInfoList: List<ResolveInfo> = packageManager.queryIntentActivities(intent, flags)
+
+        val result = mutableListOf<Map<String, Any?>>()
+        val seenPackages = mutableSetOf<String>()
+
+        for (info in resolveInfoList) {
+            val pkg = info.activityInfo?.packageName ?: continue
+
+            // Exclude our own launcher
+            if (pkg == "org.korelium.koralauncher" || pkg == "com.koralauncher.app") continue
+
+            // Deduplicate by package name — keep the first (primary) activity
+            if (seenPackages.contains(pkg)) continue
+            seenPackages.add(pkg)
+
+            val appLabel = info.loadLabel(packageManager).toString()
+            val iconBytes = try { getAppIconBytes(pkg) } catch (e: Exception) { null }
+
+            result.add(
+                mapOf(
+                    "packageName" to pkg,
+                    "name" to appLabel,
+                    "icon" to iconBytes,
+                )
+            )
+        }
+
+        return result
+    }
+
+    private fun getAppIconBytes(packageName: String): ByteArray? {
+        val drawable: Drawable = try {
+            packageManager.getApplicationIcon(packageName)
+        } catch (e: PackageManager.NameNotFoundException) {
+            return null
+        }
+        val bitmap = drawableToBitmap(drawable)
+        val stream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        return stream.toByteArray()
+    }
+
+    private fun drawableToBitmap(drawable: Drawable): Bitmap {
+        if (drawable is BitmapDrawable && drawable.bitmap != null) {
+            return drawable.bitmap
+        }
+
+        // AdaptiveIconDrawable needs to be rendered onto a canvas
+        val size = 192 // px — same resolution installed_apps uses
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        drawable.setBounds(0, 0, canvas.width, canvas.height)
+        drawable.draw(canvas)
+        return bitmap
     }
 }

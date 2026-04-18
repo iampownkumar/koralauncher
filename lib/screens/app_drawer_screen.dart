@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:installed_apps/app_info.dart';
+import 'package:installed_apps/app_category.dart';
+import 'package:installed_apps/platform_type.dart';
+import '../models/app_entry.dart';
 import '../services/launcher_service.dart';
 import '../services/storage_service.dart';
 import '../services/usage_service.dart';
@@ -17,9 +20,10 @@ class AppDrawerScreen extends StatefulWidget {
   State<AppDrawerScreen> createState() => _AppDrawerScreenState();
 }
 
-class _AppDrawerScreenState extends State<AppDrawerScreen> {
-  List<AppInfo> _apps = [];
-  List<AppInfo> _filteredApps = [];
+class _AppDrawerScreenState extends State<AppDrawerScreen>
+    with WidgetsBindingObserver {
+  List<AppEntry> _apps = [];
+  List<AppEntry> _filteredApps = [];
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
@@ -28,6 +32,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkPermissionsAndLoad();
     _searchController.addListener(_filterApps);
     // Request focus for search bar when drawer opens
@@ -37,7 +42,16 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Refresh when user returns to Kora (e.g. after adding a shortcut in Firefox)
+    if (state == AppLifecycleState.resumed) {
+      _refreshData();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _searchFocusNode.dispose();
     _scrollController.dispose();
@@ -48,29 +62,42 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
     final hasUsage = await NativeService.hasUsagePermission();
     setState(() {
       _hasUsagePermission = hasUsage;
-      _apps = LauncherService.cachedApps
-          .where((app) => !app.packageName.contains('koralauncher'))
-          .toList();
+      _apps = LauncherService.cachedEntries;
       _filteredApps = _apps;
     });
   }
 
   bool _isLaunching = false;
 
-  Future<void> _openApp(AppInfo app) async {
+  Future<void> _openApp(AppEntry app) async {
     if (_isLaunching) return;
     _isLaunching = true;
     try {
-      final isFlagged = StorageService.isAppFlagged(app.packageName);
+      // Pinned shortcuts (browser desktop shortcuts) — launch via intent URI or shortcut ID
+      if (app.isShortcut) {
+        _searchController.clear();
+        await NativeService.launchShortcut(
+          intentUri: app.intentUri,
+          targetPackage: app.targetPackage,
+          shortcutId: app.shortcutId,
+        );
+        if (mounted) Navigator.pop(context);
+        return;
+      }
 
+      // Regular apps — check Rising Tide flag first
+      final isFlagged = StorageService.isAppFlagged(app.packageName);
       if (isFlagged) {
         _searchController.clear();
+        // Build a minimal AppInfo to pass to InterceptionScreen
+        final appInfo = LauncherService.cachedApps
+            .firstWhere((a) => a.packageName == app.packageName);
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
-                InterceptionScreen(app: app),
+                InterceptionScreen(app: appInfo),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
                   return FadeTransition(opacity: animation, child: child);
@@ -94,8 +121,8 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
   void _filterApps() {
     final query = _searchController.text.toLowerCase();
     setState(() {
-      _filteredApps = _apps.where((app) {
-        return app.name.toLowerCase().contains(query);
+      _filteredApps = _apps.where((entry) {
+        return entry.name.toLowerCase().contains(query);
       }).toList();
     });
 
@@ -113,9 +140,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
     await UsageService.refreshUsage();
     if (mounted) {
       setState(() {
-        _apps = LauncherService.cachedApps
-            .where((app) => !app.packageName.contains('koralauncher'))
-            .toList();
+        _apps = LauncherService.cachedEntries;
         _filterApps();
       });
     }
@@ -228,37 +253,79 @@ class _AppDrawerScreenState extends State<AppDrawerScreen> {
       padding: const EdgeInsets.only(bottom: 32),
       itemBuilder: (context, index) {
         final app = _filteredApps[index];
-        final isFlagged = StorageService.isAppFlagged(app.packageName);
-        final usage = _hasUsagePermission
+        final isFlagged = !app.isShortcut && StorageService.isAppFlagged(app.packageName);
+        final usage = (!app.isShortcut && _hasUsagePermission)
             ? UsageService.getAppUsage(app.packageName)
             : Duration.zero;
         return AppListItem(
-          app: app,
+          app: AppInfo(
+            name: app.name,
+            packageName: app.packageName,
+            icon: app.icon,
+            versionName: '',
+            versionCode: 0,
+            platformType: PlatformType.nativeOrOthers,
+            installedTimestamp: 0,
+            isSystemApp: false,
+            isLaunchableApp: true,
+            category: AppCategory.undefined,
+          ),
           isFlagged: isFlagged,
           usage: usage,
-          onFlagTap: () async {
-            // Gate: Accessibility permission required for Rising Tide flagging.
-            // If not granted, show the disclosure sheet (same as onboarding).
-            final hasAccess = await NativeService.hasAccessibilityPermission();
-            if (!hasAccess) {
-              if (!context.mounted) return;
-              // ignore: use_build_context_synchronously
-              await AccessibilityDisclosureSheet.show(context);
-              if (mounted) setState(() {});
-              return;
-            }
-            await StorageService.toggleFlaggedApp(app.packageName);
-            if (mounted) setState(() {});
-          },
+          onFlagTap: app.isShortcut
+              ? null // shortcuts can't be flagged for Rising Tide
+              : () async {
+                  final hasAccess = await NativeService.hasAccessibilityPermission();
+                  if (!hasAccess) {
+                    if (!context.mounted) return;
+                    // ignore: use_build_context_synchronously
+                    await AccessibilityDisclosureSheet.show(context);
+                    if (mounted) setState(() {});
+                    return;
+                  }
+                  await StorageService.toggleFlaggedApp(app.packageName);
+                  if (mounted) setState(() {});
+                },
           onTap: () => _openApp(app),
           onLongPress: () {
-            showAppLongPressMenu(
-              context,
-              app,
-              onChanged: () {
-                if (mounted) setState(() {});
-              },
-            );
+            if (app.isShortcut) {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Remove Shortcut'),
+                  content: Text('Remove ${app.name} from your apps?'),
+                  backgroundColor: const Color(0xFF0F172A),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  actions: [
+                    TextButton(
+                      style: TextButton.styleFrom(foregroundColor: Colors.white54),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        final String id = app.packageName.replaceFirst('shortcut_', '');
+                        await NativeService.removeShortcut(id);
+                        _refreshData();
+                      },
+                      child: const Text('Remove'),
+                    ),
+                  ],
+                ),
+              );
+            } else {
+              final appInfo = LauncherService.cachedApps
+                  .firstWhere((a) => a.packageName == app.packageName);
+              showAppLongPressMenu(
+                context,
+                appInfo,
+                onChanged: () {
+                  if (mounted) setState(() {});
+                },
+              );
+            }
           },
         );
       },
