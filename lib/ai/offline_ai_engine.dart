@@ -1,9 +1,13 @@
-/// Offline AI Engine — Downloads and manages the on-device AI model.
+/// Offline AI Engine — Downloads, manages, and runs the on-device AI model.
 /// Created by POWNKUMAR A (Founder of Korelium) – 2026-04-28
-/// Last updated – 2026-04-28 14:00 IST
+/// Last updated – 2026-04-28 14:30 IST
+///
+/// Privacy guarantee: ALL inference runs 100% on-device.
+/// No data ever leaves the phone after the initial model download.
 
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import '../services/storage_service.dart';
@@ -14,39 +18,72 @@ class OfflineAIEngine extends ChangeNotifier {
   factory OfflineAIEngine() => _instance;
   OfflineAIEngine._internal();
 
+  // ── Native bridge ──────────────────────────────────────────
+  static const _channel = MethodChannel('org.korelium.koralauncher/gemma');
+
   // ── Model config ───────────────────────────────────────────
-  // Using a publicly accessible small TFLite model for demonstration.
-  // In production, replace with your own hosted model URL.
+  // Gemma 2B int4 quantized model (~1.3 GB)
+  // Hosted publicly — download once, runs forever on-device.
   static const String modelUrl =
-      'https://storage.googleapis.com/mediapipe-models/text_classifier/bert_classifier/float32/1/bert_classifier.tflite';
-  static const String _modelFileName = 'kora_ai_model.tflite';
+      'https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/gemma3-1B-it-int4.task';
+  static const String _modelFileName = 'gemma3-1b-it-int4.task';
+  static const String modelDisplayName = 'Gemma 3 1B IT (int4)';
+  static const String modelSize = '~550 MB';
 
   // ── State ──────────────────────────────────────────────────
   bool _isDownloading = false;
   double _downloadProgress = 0.0;
   bool _isModelReady = false;
+  bool _isModelLoaded = false;
   String? _modelPath;
   String? _errorMessage;
 
   bool get isDownloading => _isDownloading;
   double get downloadProgress => _downloadProgress;
   bool get isModelReady => _isModelReady;
+  bool get isModelLoaded => _isModelLoaded;
   String? get modelPath => _modelPath;
   String? get errorMessage => _errorMessage;
 
-  // ── Initialize — check if model already exists ─────────────
+  // ── Initialize — check if model exists & load it ───────────
   Future<void> init() async {
     final savedPath = StorageService.getOfflineAiModelPath();
     if (savedPath != null && await File(savedPath).exists()) {
       _modelPath = savedPath;
       _isModelReady = true;
       debugPrint('OfflineAI: Model found at $savedPath');
+
+      // Auto-load if enabled
+      if (StorageService.isOfflineAiEnabled() && !_isModelLoaded) {
+        await _loadModelNative();
+      }
     } else {
       _isModelReady = false;
       _modelPath = null;
       debugPrint('OfflineAI: No model found on disk.');
     }
     notifyListeners();
+  }
+
+  // ── Load model into native inference engine ────────────────
+  Future<bool> _loadModelNative() async {
+    if (_modelPath == null) return false;
+    try {
+      debugPrint('OfflineAI: Loading model into native engine...');
+      final result = await _channel.invokeMethod<bool>('loadModel', {
+        'modelPath': _modelPath,
+      });
+      _isModelLoaded = result == true;
+      debugPrint('OfflineAI: Model loaded = $_isModelLoaded');
+      notifyListeners();
+      return _isModelLoaded;
+    } catch (e) {
+      debugPrint('OfflineAI: Failed to load model natively: $e');
+      _errorMessage = 'Failed to load model: $e';
+      _isModelLoaded = false;
+      notifyListeners();
+      return false;
+    }
   }
 
   // ── Download the model ─────────────────────────────────────
@@ -83,8 +120,8 @@ class OfflineAIEngine extends ChangeNotifier {
           if (totalBytes > 0) {
             _downloadProgress = receivedBytes / totalBytes;
           } else {
-            // Unknown size — show indeterminate-ish progress
-            _downloadProgress = (receivedBytes / (50 * 1024 * 1024)).clamp(0.0, 0.95);
+            _downloadProgress =
+                (receivedBytes / (550 * 1024 * 1024)).clamp(0.0, 0.95);
           }
           notifyListeners();
         },
@@ -107,6 +144,10 @@ class OfflineAIEngine extends ChangeNotifier {
       _downloadProgress = 1.0;
       _isDownloading = false;
       debugPrint('OfflineAI: Download complete → $filePath');
+
+      // Auto-load the model after download
+      await _loadModelNative();
+
       notifyListeners();
     } catch (e) {
       _isDownloading = false;
@@ -119,6 +160,12 @@ class OfflineAIEngine extends ChangeNotifier {
 
   // ── Delete model from disk ─────────────────────────────────
   Future<void> deleteModel() async {
+    // Unload from native engine first
+    try {
+      await _channel.invokeMethod('unloadModel');
+    } catch (_) {}
+    _isModelLoaded = false;
+
     if (_modelPath != null) {
       final file = File(_modelPath!);
       if (await file.exists()) {
@@ -134,21 +181,76 @@ class OfflineAIEngine extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Stub inference — returns a context-aware prompt ────────
-  Future<String> generateAnswer(Map<String, dynamic> context) async {
-    if (!_isModelReady) {
-      return 'AI model not ready. Please download it first.';
+  // ── Generate AI response — real on-device inference ────────
+  /// Returns an AI-generated response, or null if inference fails/times out.
+  /// The caller should fall back to templates when this returns null.
+  Future<String?> generateAnswer(Map<String, dynamic> context) async {
+    if (!_isModelReady) return null;
+
+    // Ensure model is loaded
+    if (!_isModelLoaded) {
+      final loaded = await _loadModelNative();
+      if (!loaded) return null;
     }
 
-    // Simulated inference delay
-    await Future.delayed(const Duration(milliseconds: 800));
+    try {
+      // Build the Gemma chat prompt
+      final prompt = _buildGemmaPrompt(context);
 
-    final package = context['packageName'] ?? 'this app';
-    final intention = context['todayIntention'] ?? 'your goal';
-    final mood = context['mood'] ?? 'neutral';
+      // Run inference with a 3-second timeout — fall back to templates if slow
+      final result = await _channel
+          .invokeMethod<String>('generate', {'prompt': prompt})
+          .timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('OfflineAI: Inference timed out (>3s), falling back');
+          return null;
+        },
+      );
 
-    // In production, this would call tflite_flutter for real inference.
-    return 'You\'re about to open $package while feeling $mood. '
-        'Does this align with "$intention"?';
+      if (result != null && result.trim().isNotEmpty) {
+        debugPrint('OfflineAI: Generated response (${result.length} chars)');
+        return result.trim();
+      }
+      return null;
+    } catch (e) {
+      debugPrint('OfflineAI: Inference error — $e');
+      return null;
+    }
+  }
+
+  // ── Build Gemma-compatible prompt ──────────────────────────
+  String _buildGemmaPrompt(Map<String, dynamic> context) {
+    final appName = context['appName'] ?? 'this app';
+    final intention = context['todayIntention'] ?? 'not set';
+    final minutes = context['minutesToday'] ?? 0;
+    final limit = context['limitMinutes'] ?? 10;
+    final opens = context['opensToday'] ?? 0;
+    final time = context['currentTime'] ?? '';
+    final mood = context['mood'] ?? '';
+
+    return '''<start_of_turn>user
+You are Kora, a calm inner voice. Write ONE short question (max 20 words) to help someone decide if opening $appName right now is the right choice.
+
+Facts: Used ${minutes}m of ${limit}m limit today. Opened $opens times. Time: $time. Goal: "$intention". ${mood.isNotEmpty ? 'Feeling: $mood.' : ''}
+
+Rules: No lecturing. No emojis. Be gentle, factual, varied. Sometimes wry, sometimes warm.
+<end_of_turn>
+<start_of_turn>model
+''';
+  }
+
+  // ── Test inference (for settings page) ─────────────────────
+  Future<String> testInference() async {
+    final result = await generateAnswer({
+      'appName': 'Instagram',
+      'todayIntention': 'finish my project',
+      'minutesToday': 25,
+      'limitMinutes': 30,
+      'opensToday': 5,
+      'currentTime': '2:30 PM',
+      'mood': 'focused',
+    });
+    return result ?? 'Model returned no response. Template fallback will be used.';
   }
 }

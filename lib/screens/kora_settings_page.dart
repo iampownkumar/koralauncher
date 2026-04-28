@@ -297,33 +297,102 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
   }
 
   Widget _buildDownloadButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: () => _engine.downloadModel(),
-        icon: const Icon(Icons.download, size: 18),
-        label: const Text('Download AI Model'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.cyanAccent.withOpacity(0.15),
-          foregroundColor: Colors.cyanAccent,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-            side: BorderSide(color: Colors.cyanAccent.withOpacity(0.3)),
+    return Column(
+      children: [
+        // RAM warning
+        Container(
+          padding: const EdgeInsets.all(10),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.amber.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.amber.withOpacity(0.2)),
           ),
-          elevation: 0,
+          child: const Row(
+            children: [
+              Icon(Icons.memory, color: Colors.amber, size: 16),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Requires 4GB+ RAM. Download size: ${OfflineAIEngine.modelSize}',
+                  style: TextStyle(color: Colors.amber, fontSize: 11),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
+        // Privacy badge
+        Container(
+          padding: const EdgeInsets.all(10),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Colors.greenAccent.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.greenAccent.withOpacity(0.15)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.shield_outlined, color: Colors.greenAccent, size: 16),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '100% on-device. Your data never leaves your phone.',
+                  style: TextStyle(color: Colors.greenAccent, fontSize: 11),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => _engine.downloadModel(),
+            icon: const Icon(Icons.download, size: 18),
+            label: Text('Download ${OfflineAIEngine.modelDisplayName} (${OfflineAIEngine.modelSize})'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.cyanAccent.withOpacity(0.15),
+              foregroundColor: Colors.cyanAccent,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: BorderSide(color: Colors.cyanAccent.withOpacity(0.3)),
+              ),
+              elevation: 0,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildModelInfoSection() {
     return Column(
       children: [
-        _buildInfoRow(Icons.storage, 'Model', 'Kora AI (TFLite)'),
+        _buildInfoRow(Icons.smart_toy_outlined, 'Model', OfflineAIEngine.modelDisplayName),
         const SizedBox(height: 8),
-        _buildInfoRow(Icons.check_circle_outline, 'Status', 'Downloaded & Ready'),
+        _buildInfoRow(Icons.check_circle_outline, 'Status',
+            _engine.isModelLoaded ? 'Loaded & Running' : 'Downloaded (loading...)'),
+        const SizedBox(height: 8),
+        _buildInfoRow(Icons.shield_outlined, 'Privacy', '100% on-device'),
         const SizedBox(height: 14),
+        // Test AI button
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _testAI,
+            icon: const Icon(Icons.science_outlined, size: 18),
+            label: const Text('Test AI Response'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.cyanAccent,
+              side: BorderSide(color: Colors.cyanAccent.withOpacity(0.3)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
@@ -561,5 +630,45 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
       StorageService.setOfflineAiPrompts(prompts);
       setState(() {});
     }
+  }
+
+  void _testAI() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(
+        child: CircularProgressIndicator(color: Colors.cyanAccent),
+      ),
+    );
+
+    final result = await _engine.testInference();
+
+    if (!mounted) return;
+    Navigator.pop(context); // dismiss spinner
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.auto_awesome, color: Colors.cyanAccent, size: 20),
+            SizedBox(width: 8),
+            Text('AI Test Response', style: TextStyle(color: Colors.white, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          result,
+          style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK', style: TextStyle(color: Colors.cyanAccent)),
+          ),
+        ],
+      ),
+    );
   }
 }

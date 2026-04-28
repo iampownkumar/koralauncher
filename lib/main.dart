@@ -13,6 +13,7 @@ import 'services/app_lock_manager.dart';
 import 'services/native_service.dart';
 import 'services/todo_service.dart';
 import 'ai/ai_prompt_engine.dart';
+import 'ai/offline_ai_engine.dart';
 import 'widgets/onboarding_flow.dart';
 
 Future<void> main() async {
@@ -71,6 +72,10 @@ class _KoraStartupShellState extends State<KoraStartupShell> {
       // is available and pre-warms the model if so.  Falls back to
       // template messages silently if AI isn't supported.
       await AIPromptEngine.init();
+
+      // Offline AI engine — loads user-downloaded model if available.
+      // Non-blocking and failure-safe.
+      await OfflineAIEngine().init();
 
       await RisingTideService.syncInterceptionState();
 

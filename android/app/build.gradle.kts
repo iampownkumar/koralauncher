@@ -88,6 +88,11 @@ android {
     }
 }
 
+dependencies {
+    implementation("com.google.mediapipe:tasks-genai:0.10.22")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+}
+
 flutter {
     source = "../.."
 }

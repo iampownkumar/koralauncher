@@ -40,6 +40,9 @@ class MainActivity: FlutterActivity() {
         // Register the on-device AI bridge (Gemini Nano / AICore)
         GeminiNanoBridge.register(flutterEngine, applicationContext)
 
+        // Register the offline Gemma inference service (user-downloaded model)
+        GemmaInferenceService.register(flutterEngine, applicationContext)
+
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
         methodChannel?.setMethodCallHandler { call, result ->
 

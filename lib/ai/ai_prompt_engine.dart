@@ -4,6 +4,7 @@ import '../models/rising_tide_stage.dart';
 import 'ai_context_builder.dart';
 import 'ai_cache_service.dart';
 import 'gemini_nano_bridge.dart';
+import 'offline_ai_engine.dart';
 import 'template_message_engine.dart';
 
 /// The main AI service for the Rising Tide system.
@@ -103,7 +104,30 @@ class AIPromptEngine {
       stage: stage,
     );
 
-    // ── Step 3: Try on-device AI ─────────────────────────────────────
+    // ── Step 3: Try user-downloaded offline model (Gemma) ────────────
+    final offlineEngine = OfflineAIEngine();
+    if (offlineEngine.isModelReady) {
+      try {
+        final offlineResult = await offlineEngine.generateAnswer(
+          ctx.toPromptMap(),
+        );
+
+        if (offlineResult != null && offlineResult.trim().isNotEmpty) {
+          final cleaned = _cleanAIOutput(offlineResult);
+          await AICacheService.cacheMessage(
+            packageName: packageName,
+            stageName: stageName,
+            message: cleaned,
+          );
+          debugPrint('AIPromptEngine: Offline Gemma model generated message');
+          return AIMessage(text: cleaned, source: AIMessageSource.ai);
+        }
+      } catch (e) {
+        debugPrint('AIPromptEngine: Offline AI failed (falling back): $e');
+      }
+    }
+
+    // ── Step 3b: Try Gemini Nano (AICore — Pixel-only) ───────────────
     if (_aiAvailable) {
       try {
         final prompt = _buildSystemPrompt(ctx);
