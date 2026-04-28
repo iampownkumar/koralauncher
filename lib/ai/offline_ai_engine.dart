@@ -22,10 +22,10 @@ class OfflineAIEngine extends ChangeNotifier {
   static const _channel = MethodChannel('org.korelium.koralauncher/gemma');
 
   // ── Model config ───────────────────────────────────────────
-  // Gemma 2B int4 quantized model (~1.3 GB)
-  // Hosted publicly — download once, runs forever on-device.
+  // Gemma 3 1B IT int4 (~550 MB) — hosted on our GitHub Releases.
+  // Public URL, no auth needed. Download once, runs forever on-device.
   static const String modelUrl =
-      'https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/gemma3-1B-it-int4.task';
+      'https://github.com/iampownkumar/koralauncher/releases/download/v1.2.0-ai/gemma3-1b-it-int4.task';
   static const String _modelFileName = 'gemma3-1b-it-int4.task';
   static const String modelDisplayName = 'Gemma 3 1B IT (int4)';
   static const String modelSize = '~550 MB';
@@ -107,7 +107,7 @@ class OfflineAIEngine extends ChangeNotifier {
     }
   }
 
-  // ── Download the model ─────────────────────────────────────
+  // ── Download the model (from GitHub Releases — public, no auth) ──
   Future<void> downloadModel() async {
     if (_isDownloading) return;
 
@@ -121,10 +121,14 @@ class OfflineAIEngine extends ChangeNotifier {
       final filePath = '${dir.path}/$_modelFileName';
       final file = File(filePath);
 
-      debugPrint('OfflineAI: Starting download from $modelUrl');
+      debugPrint('OfflineAI: Starting download from GitHub Releases...');
 
+      // GitHub Releases redirects — follow redirects automatically
+      final client = http.Client();
       final request = http.Request('GET', Uri.parse(modelUrl));
-      final response = await http.Client().send(request);
+      request.followRedirects = true;
+      request.maxRedirects = 5;
+      final response = await client.send(request);
 
       if (response.statusCode != 200) {
         throw HttpException('Download failed: HTTP ${response.statusCode}');
