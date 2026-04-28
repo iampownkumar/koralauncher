@@ -84,6 +84,12 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+
+            // ProGuard / R8 rules — keep MediaPipe + protobuf classes
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
