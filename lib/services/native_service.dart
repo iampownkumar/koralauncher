@@ -46,7 +46,23 @@ class NativeService {
     if (ForegroundInterceptGuard.shouldSkipForPackage(packageName)) return;
 
     await UsageService.refreshUsage();
-    final stage = RisingTideService.getStage(packageName);
+
+    // Compute real-time usage percentage and force the controller
+    // into the correct stage.  The 30-second poll stream may not
+    // have fired yet, so we do a synchronous check here.
+    final used = UsageService.getRoundedMinutesToday(packageName);
+    final limit = StorageService.getAppDailyLimitMinutes(packageName);
+    final percent = limit <= 0 ? 0.0 : used / limit;
+
+    final controller = RisingTideService().controllerFor(packageName);
+    if (percent >= 1.0 && controller.currentStage.index < RisingTideStage.mirror.index) {
+      await controller.advanceToStage(RisingTideStage.mirror);
+    } else if (percent >= 0.5 && controller.currentStage == RisingTideStage.whisper) {
+      await controller.advanceToStage(RisingTideStage.dim);
+    }
+
+    final stage = controller.currentStage;
+    debugPrint('RisingTide: $packageName  used=${used}m  limit=${limit}m  pct=${(percent * 100).toStringAsFixed(0)}%  stage=${stage.name}');
     if (stage == RisingTideStage.whisper) return;
 
     final now = DateTime.now();

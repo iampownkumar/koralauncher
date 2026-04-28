@@ -13,6 +13,7 @@ import 'permissions_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
 import '../wallpaper/wallpaper_service.dart';
+import 'kora_settings_page.dart';
 
 import 'package:upgrader/upgrader.dart';
 import 'package:intl/intl.dart';
@@ -524,6 +525,22 @@ class _HomeScreenState extends State<HomeScreen> {
               flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
             ).launch(),
           ),
+          _buildShortcutIcon(
+            icon: Icons.settings_outlined,
+            onTap: () {
+              Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      const KoraSettingsPage(),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(opacity: animation, child: child);
+                  },
+                ),
+              ).then((_) => _controller.refreshHomeState());
+            },
+          ),
         ],
       ),
     );
@@ -536,12 +553,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(13),
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.1),
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, color: Colors.white, size: 28),
+        child: Icon(icon, color: Colors.white, size: 24),
       ),
     );
   }
