@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:koralauncher/services/storage_service.dart';
 import 'native_service.dart';
 import 'launcher_service.dart';
 
@@ -11,27 +12,32 @@ class KoraUsageInfo {
 
 class UsageService {
   static List<KoraUsageInfo> _usageInfos = [];
-  
+
   static List<KoraUsageInfo> get usageInfos => _usageInfos;
 
   static Future<void> refreshUsage() async {
     if (!Platform.isAndroid) return;
-    
+
     try {
       bool hasPermission = await NativeService.hasUsagePermission();
-      if (!hasPermission) return; 
+      if (!hasPermission) return;
 
       DateTime endDate = DateTime.now();
       DateTime startDate = DateTime(endDate.year, endDate.month, endDate.day);
-      
+
       Map<String, int> rawStats = await NativeService.getRawUsageStats(
         startDate.millisecondsSinceEpoch,
         endDate.millisecondsSinceEpoch,
       );
-      
+
       List<KoraUsageInfo> infoList = [];
       rawStats.forEach((package, millis) {
-        infoList.add(KoraUsageInfo(packageName: package, usage: Duration(milliseconds: millis)));
+        infoList.add(
+          KoraUsageInfo(
+            packageName: package,
+            usage: Duration(milliseconds: millis),
+          ),
+        );
       });
       _usageInfos = infoList;
     } catch (exception, stackTrace) {
@@ -84,22 +90,24 @@ class UsageService {
 
   static Duration getTotalUsage() {
     Duration total = Duration.zero;
-    final cachedPackages = LauncherService.cachedApps.map((a) => a.packageName).toSet();
+    final cachedPackages = LauncherService.cachedApps
+        .map((a) => a.packageName)
+        .toSet();
     final Map<String, Duration> uniqueUsage = {};
 
     for (var info in _usageInfos) {
-      if (cachedPackages.contains(info.packageName) && 
+      if (cachedPackages.contains(info.packageName) &&
           !info.packageName.contains('koralauncher')) {
-        
         // Handle overlapping daily buckets bug in app_usage by taking the maximum payload
-        if (!uniqueUsage.containsKey(info.packageName) || info.usage > uniqueUsage[info.packageName]!) {
-            uniqueUsage[info.packageName] = info.usage;
+        if (!uniqueUsage.containsKey(info.packageName) ||
+            info.usage > uniqueUsage[info.packageName]!) {
+          uniqueUsage[info.packageName] = info.usage;
         }
       }
     }
-    
+
     uniqueUsage.forEach((_, duration) {
-       total += duration;
+      total += duration;
     });
 
     return total;
@@ -113,5 +121,21 @@ class UsageService {
     final minutes = totalMinutes % 60;
     if (hours > 0) return "${hours}h ${minutes}m";
     return "${minutes}m";
+  }
+
+  // Stream that emits usage percentage (0.0‑1.0) for a package every 30 seconds.
+  static Stream<double> usagePercentStream(String packageName) async* {
+    const interval = Duration(seconds: 30);
+    while (true) {
+      await refreshUsage();
+      final used = getRoundedMinutesToday(packageName);
+      final limit = StorageService.getAppDailyLimitMinutes(packageName);
+      if (limit <= 0) {
+        yield 0.0;
+      } else {
+        yield used / limit;
+      }
+      await Future.delayed(interval);
+    }
   }
 }

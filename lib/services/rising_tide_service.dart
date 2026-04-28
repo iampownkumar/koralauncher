@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../services/rising_tide_controller.dart';
 import '../models/rising_tide_stage.dart';
 import 'usage_service.dart';
 import 'storage_service.dart';
@@ -6,48 +7,26 @@ import 'native_service.dart';
 import 'rising_tide_logger.dart';
 
 class RisingTideService {
+  static final RisingTideService _instance = RisingTideService._internal();
+  RisingTideService._internal();
+
+  factory RisingTideService() => _instance;
+
   static String? _cachedIntention;
   static DateTime? _lastIntentionFetch;
 
+  // Map of package -> controller
+  final Map<String, RisingTideController> _controllers = {};
+
+  RisingTideController controllerFor(String packageName) {
+    return _controllers.putIfAbsent(packageName, () => RisingTideController(packageName));
+  }
+
   /// Calculates the current Rising Tide stage for a given package.
   static RisingTideStage getStage(String packageName) {
-    if (!StorageService.isRisingTideMasterEnabled()) {
-      return RisingTideStage.whisper;
-    }
-
-    if (!StorageService.isAppFlagged(packageName)) {
-      return RisingTideStage.whisper;
-    }
-
-    final usageMinutes = UsageService.getRoundedMinutesToday(packageName);
-    final limit = _getAppDailyLimit(packageName);
-    final limitMin = limit.inMinutes;
-    if (limitMin <= 0) {
-      return RisingTideStage.whisper;
-    }
-    final usagePercent = usageMinutes / limitMin;
-    final overrides = _getTodayOverrideCount(packageName);
-
-    RisingTideStage stage;
-    if (usagePercent >= 1.0 || overrides >= 2) {
-      stage = RisingTideStage.mirror;
-    } else if (usagePercent >= 0.5) {
-      // Only show the Dim gate if the user hasn't consciously decided today
-      if (!_hasUserDecidedToday(packageName)) {
-        stage = RisingTideStage.dim;
-      } else {
-        stage = RisingTideStage.whisper;
-      }
-    } else {
-      stage = RisingTideStage.whisper;
-    }
-
-    // Reopen lock: If the grace period is active, let them through (Whisper).
-    if (isPackageLocked(packageName)) {
-      return RisingTideStage.whisper;
-    }
-
-    return stage;
+    final controller = _instance.controllerFor(packageName);
+    // Return the latest stage from the controller (fallback to whisper)
+    return controller.currentStage;
   }
 
   /// Synchronizes the list of apps that need interception with the native Accessibility service.
@@ -57,12 +36,19 @@ class RisingTideService {
       return;
     }
 
+    // Ensure controllers are instantiated so they process the current usage
+    // before we decide which apps need to be blocked.
+    final allFlagged = StorageService.getFlaggedApps();
+    for (final pkg in allFlagged) {
+      RisingTideService._instance.controllerFor(pkg); // instantiate controller and start listening
+    }
+    // Give the usage stream a chance to emit the initial percentage.
+    await Future.delayed(const Duration(milliseconds: 100));
+
     // Only send apps to the native watcher that are currently in a blocking stage (Dim, Mirror, Silence).
     // This prevents the native service from "stealing focus" (bringing Kora to front) for apps
     // that should be allowed to open directly in the Whisper stage.
-    final allFlagged = StorageService.getFlaggedApps();
     final List<String> toBlock = [];
-
     for (final pkg in allFlagged) {
       if (getStage(pkg) != RisingTideStage.whisper) {
         toBlock.add(pkg);

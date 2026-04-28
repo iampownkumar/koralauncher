@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'rising_tide_service.dart';
 
@@ -112,9 +114,7 @@ class StorageService {
     return 'intention_todo_id_$today';
   }
 
-  static int? getIntentionTodoId() {
-    return _prefs.getInt(_intentionTodoKey());
-  }
+  static int? getIntentionTodoId() => _prefs.getInt(_intentionTodoKey());
 
   static Future<void> setIntentionTodoId(int id) async {
     await _prefs.setInt(_intentionTodoKey(), id);
@@ -140,6 +140,40 @@ class StorageService {
 
   static Future<void> remove(String key) async {
     await _prefs.remove(key);
+  }
+
+  // --- Offline AI ---
+  static const String _offlineAiEnabledKey = 'offline_ai_enabled';
+  static const String _offlineAiModelPathKey = 'offline_ai_model_path';
+  static const String _offlineAiPromptsKey = 'offline_ai_prompts';
+
+  static bool isOfflineAiEnabled() =>
+      _prefs.getBool(_offlineAiEnabledKey) ?? false;
+
+  static Future<void> setOfflineAiEnabled(bool enabled) async {
+    await _prefs.setBool(_offlineAiEnabledKey, enabled);
+  }
+
+  static String? getOfflineAiModelPath() =>
+      _prefs.getString(_offlineAiModelPathKey);
+
+  static Future<void> setOfflineAiModelPath(String path) async {
+    await _prefs.setString(_offlineAiModelPathKey, path);
+  }
+
+  static Future<void> clearOfflineAiModelPath() async {
+    await _prefs.remove(_offlineAiModelPathKey);
+  }
+
+  static List<String> getOfflineAiPrompts() {
+    final json = _prefs.getString(_offlineAiPromptsKey);
+    if (json == null) return [];
+    final List<dynamic> decoded = jsonDecode(json);
+    return decoded.cast<String>();
+  }
+
+  static Future<void> setOfflineAiPrompts(List<String> prompts) async {
+    await _prefs.setString(_offlineAiPromptsKey, jsonEncode(prompts));
   }
 
   // --- Onboarding ---
