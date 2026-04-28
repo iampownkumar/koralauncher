@@ -3,6 +3,7 @@ import '../services/storage_service.dart';
 import '../services/rising_tide_service.dart';
 import '../utils/limit_time_format.dart';
 import 'high_limit_confirm_dialog.dart';
+import '../ai/ai_cache_service.dart';
 
 /// Daily time limit for one app — quick-pick chips + fine-tune slider.
 class DailyLimitSheet extends StatefulWidget {
@@ -46,6 +47,9 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
       await StorageService.toggleFlaggedApp(widget.packageName);
     }
     await RisingTideService.syncInterceptionState();
+    // Bust the AI message cache so the next interception generates
+    // a fresh message based on the new limit / new stage.
+    await AICacheService.invalidate(widget.packageName);
     if (mounted) Navigator.of(context).pop();
   }
 

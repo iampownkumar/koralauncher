@@ -335,14 +335,14 @@ class _TodoScreenState extends State<TodoScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: isCompleted
-            ? Colors.white.withOpacity(0.02)
+            ? Colors.white.withOpacity(0.05)
             : isIntentionLinked
                 ? Colors.cyanAccent.withOpacity(0.04)
                 : Colors.white.withOpacity(0.06),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isCompleted
-              ? Colors.white.withOpacity(0.05)
+              ? Colors.white.withOpacity(0.08)
               : isIntentionLinked
                   ? Colors.cyanAccent.withOpacity(0.2)
                   : Colors.white.withOpacity(0.1),
@@ -363,8 +363,9 @@ class _TodoScreenState extends State<TodoScreen> {
         title: Text(
           todo.title,
           style: TextStyle(
-            color: isCompleted ? Colors.white38 : Colors.white.withOpacity(0.87),
+            color: isCompleted ? Colors.white60 : Colors.white.withOpacity(0.87),
             decoration: isCompleted ? TextDecoration.lineThrough : null,
+            decorationColor: Colors.white38,
             fontSize: 15,
             fontWeight: isCompleted ? FontWeight.normal : FontWeight.w500,
           ),

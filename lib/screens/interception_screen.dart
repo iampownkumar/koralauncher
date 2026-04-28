@@ -15,6 +15,7 @@ import '../services/native_service.dart';
 import '../utils/limit_time_format.dart';
 import '../services/todo_service.dart';
 import '../ai/ai_prompt_engine.dart';
+import '../ai/ai_cache_service.dart';
 
 class InterceptionScreen extends StatefulWidget {
   final AppInfo app;
@@ -594,6 +595,10 @@ class _InterceptionScreenState extends State<InterceptionScreen> {
             await db.saveIntention(intentionText);
           }
           RisingTideService.invalidateIntentionCache();
+
+          // Bust the AI message cache so the next interception generates
+          // a fresh message based on the new limit / new stage.
+          await AICacheService.invalidate(widget.app.packageName);
 
           await StorageService.reloadPrefs();
           await UsageService.refreshUsage();
