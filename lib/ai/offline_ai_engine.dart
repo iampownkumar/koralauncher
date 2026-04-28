@@ -47,21 +47,42 @@ class OfflineAIEngine extends ChangeNotifier {
 
   // ── Initialize — check if model exists & load it ───────────
   Future<void> init() async {
+    // Check 1: Previously downloaded/copied model in prefs
     final savedPath = StorageService.getOfflineAiModelPath();
     if (savedPath != null && await File(savedPath).exists()) {
       _modelPath = savedPath;
       _isModelReady = true;
       debugPrint('OfflineAI: Model found at $savedPath');
+    }
 
-      // Auto-load if enabled
-      if (StorageService.isOfflineAiEnabled() && !_isModelLoaded) {
-        await _loadModelNative();
+    // Check 2: Try to copy from ADB push location via native code
+    // (Dart can't read /data/local/tmp due to sandboxing, but native Kotlin can)
+    if (!_isModelReady) {
+      try {
+        final dir = await getApplicationDocumentsDirectory();
+        final targetPath = '${dir.path}/$_modelFileName';
+        final copied = await _channel.invokeMethod<bool>('copyModelFromAdb', {
+          'adbPath': '/data/local/tmp/llm/$_modelFileName',
+          'targetPath': targetPath,
+        });
+        if (copied == true && await File(targetPath).exists()) {
+          _modelPath = targetPath;
+          _isModelReady = true;
+          await StorageService.setOfflineAiModelPath(targetPath);
+          await StorageService.setOfflineAiEnabled(true);
+          debugPrint('OfflineAI: Copied model from ADB push → $targetPath');
+        }
+      } catch (e) {
+        debugPrint('OfflineAI: ADB copy not available: $e');
       }
-    } else {
-      _isModelReady = false;
-      _modelPath = null;
+    }
+
+    if (!_isModelReady) {
       debugPrint('OfflineAI: No model found on disk.');
     }
+
+    // Model will be loaded lazily on first inference request
+    // to avoid native crashes during app startup.
     notifyListeners();
   }
 
@@ -113,27 +134,31 @@ class OfflineAIEngine extends ChangeNotifier {
       int receivedBytes = 0;
       final sink = file.openWrite();
 
-      await response.stream.listen(
-        (chunk) {
-          sink.add(chunk);
-          receivedBytes += chunk.length;
-          if (totalBytes > 0) {
-            _downloadProgress = receivedBytes / totalBytes;
-          } else {
-            _downloadProgress =
-                (receivedBytes / (550 * 1024 * 1024)).clamp(0.0, 0.95);
-          }
-          notifyListeners();
-        },
-        onDone: () async {
-          await sink.close();
-        },
-        onError: (e) async {
-          await sink.close();
-          throw e;
-        },
-        cancelOnError: true,
-      ).asFuture();
+      await response.stream
+          .listen(
+            (chunk) {
+              sink.add(chunk);
+              receivedBytes += chunk.length;
+              if (totalBytes > 0) {
+                _downloadProgress = receivedBytes / totalBytes;
+              } else {
+                _downloadProgress = (receivedBytes / (550 * 1024 * 1024)).clamp(
+                  0.0,
+                  0.95,
+                );
+              }
+              notifyListeners();
+            },
+            onDone: () async {
+              await sink.close();
+            },
+            onError: (e) async {
+              await sink.close();
+              throw e;
+            },
+            cancelOnError: true,
+          )
+          .asFuture();
 
       // Persist
       await StorageService.setOfflineAiModelPath(filePath);
@@ -201,12 +226,12 @@ class OfflineAIEngine extends ChangeNotifier {
       final result = await _channel
           .invokeMethod<String>('generate', {'prompt': prompt})
           .timeout(
-        const Duration(seconds: 3),
-        onTimeout: () {
-          debugPrint('OfflineAI: Inference timed out (>3s), falling back');
-          return null;
-        },
-      );
+            const Duration(seconds: 3),
+            onTimeout: () {
+              debugPrint('OfflineAI: Inference timed out (>3s), falling back');
+              return null;
+            },
+          );
 
       if (result != null && result.trim().isNotEmpty) {
         debugPrint('OfflineAI: Generated response (${result.length} chars)');
@@ -251,6 +276,7 @@ Rules: No lecturing. No emojis. Be gentle, factual, varied. Sometimes wry, somet
       'currentTime': '2:30 PM',
       'mood': 'focused',
     });
-    return result ?? 'Model returned no response. Template fallback will be used.';
+    return result ??
+        'Model returned no response. Template fallback will be used.';
   }
 }

@@ -54,7 +54,11 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
             pinned: true,
             backgroundColor: const Color(0xFF0A0E1A),
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white70, size: 20),
+              icon: const Icon(
+                Icons.arrow_back_ios_new,
+                color: Colors.white70,
+                size: 20,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
             flexibleSpace: FlexibleSpaceBar(
@@ -197,12 +201,19 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline, color: Colors.redAccent, size: 16),
+                  const Icon(
+                    Icons.error_outline,
+                    color: Colors.redAccent,
+                    size: 16,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       _engine.errorMessage!,
-                      style: const TextStyle(color: Colors.redAccent, fontSize: 11),
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 11,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -230,7 +241,11 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
         children: [
           const Row(
             children: [
-              Icon(Icons.cloud_download_outlined, color: Colors.cyanAccent, size: 20),
+              Icon(
+                Icons.cloud_download_outlined,
+                color: Colors.cyanAccent,
+                size: 20,
+              ),
               SizedBox(width: 10),
               Text(
                 'Model Management',
@@ -270,7 +285,10 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
           children: [
             Text(
               'Downloading model…',
-              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 13,
+              ),
             ),
             Text(
               '$pct%',
@@ -348,14 +366,18 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
           child: ElevatedButton.icon(
             onPressed: () => _engine.downloadModel(),
             icon: const Icon(Icons.download, size: 18),
-            label: Text('Download ${OfflineAIEngine.modelDisplayName} (${OfflineAIEngine.modelSize})'),
+            label: Text(
+              'Download ${OfflineAIEngine.modelDisplayName} (${OfflineAIEngine.modelSize})',
+            ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.cyanAccent.withOpacity(0.15),
+              backgroundColor: Colors.cyanAccent.withValues(alpha: 0.15),
               foregroundColor: Colors.cyanAccent,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
-                side: BorderSide(color: Colors.cyanAccent.withOpacity(0.3)),
+                side: BorderSide(
+                  color: Colors.cyanAccent.withValues(alpha: 0.3),
+                ),
               ),
               elevation: 0,
             ),
@@ -368,10 +390,19 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
   Widget _buildModelInfoSection() {
     return Column(
       children: [
-        _buildInfoRow(Icons.smart_toy_outlined, 'Model', OfflineAIEngine.modelDisplayName),
+        _buildInfoRow(
+          Icons.smart_toy_outlined,
+          'Model',
+          OfflineAIEngine.modelDisplayName,
+        ),
         const SizedBox(height: 8),
-        _buildInfoRow(Icons.check_circle_outline, 'Status',
-            _engine.isModelLoaded ? 'Loaded & Running' : 'Downloaded (loading...)'),
+        _buildInfoRow(
+          Icons.check_circle_outline,
+          'Status',
+          _engine.isModelLoaded
+              ? 'Loaded & Running'
+              : 'Downloaded (loading...)',
+        ),
         const SizedBox(height: 8),
         _buildInfoRow(Icons.shield_outlined, 'Privacy', '100% on-device'),
         const SizedBox(height: 14),
@@ -422,7 +453,10 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
           '$label: ',
           style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
         ),
-        Text(value, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+        Text(
+          value,
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+        ),
       ],
     );
   }
@@ -433,7 +467,10 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Remove AI Model?', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Remove AI Model?',
+          style: TextStyle(color: Colors.white),
+        ),
         content: const Text(
           'This will delete the downloaded model from your device. You can re-download it later.',
           style: TextStyle(color: Colors.white60),
@@ -441,14 +478,20 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white54),
+            ),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               _engine.deleteModel();
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.redAccent),
+            ),
           ),
         ],
       ),
@@ -471,7 +514,11 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_fix_high, color: Colors.amberAccent, size: 20),
+              const Icon(
+                Icons.auto_fix_high,
+                color: Colors.amberAccent,
+                size: 20,
+              ),
               const SizedBox(width: 10),
               const Expanded(
                 child: Text(
@@ -485,7 +532,11 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
               ),
               IconButton(
                 onPressed: _showAddPromptDialog,
-                icon: const Icon(Icons.add_circle_outline, color: Colors.amberAccent, size: 22),
+                icon: const Icon(
+                  Icons.add_circle_outline,
+                  color: Colors.amberAccent,
+                  size: 22,
+                ),
                 tooltip: 'Add prompt',
               ),
             ],
@@ -493,7 +544,10 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
           const SizedBox(height: 4),
           Text(
             'Custom questions the AI can ask you at gates.',
-            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.4),
+              fontSize: 12,
+            ),
           ),
           const SizedBox(height: 12),
 
@@ -511,17 +565,26 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
               ),
               child: Column(
                 children: [
-                  Icon(Icons.lightbulb_outline, color: Colors.white.withOpacity(0.2), size: 28),
+                  Icon(
+                    Icons.lightbulb_outline,
+                    color: Colors.white.withOpacity(0.2),
+                    size: 28,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     'No custom prompts yet',
-                    style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13),
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.3),
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
             )
           else
-            ...prompts.asMap().entries.map((entry) => _buildPromptTile(entry.key, entry.value)),
+            ...prompts.asMap().entries.map(
+              (entry) => _buildPromptTile(entry.key, entry.value),
+            ),
         ],
       ),
     );
@@ -580,7 +643,10 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A2E),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Add Prompt Template', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Add Prompt Template',
+          style: TextStyle(color: Colors.white),
+        ),
         content: TextField(
           controller: _promptController,
           style: const TextStyle(color: Colors.white),
@@ -599,7 +665,10 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white54),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -609,7 +678,10 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
                 Navigator.pop(ctx);
               }
             },
-            child: const Text('Add', style: TextStyle(color: Colors.amberAccent)),
+            child: const Text(
+              'Add',
+              style: TextStyle(color: Colors.amberAccent),
+            ),
           ),
         ],
       ),
@@ -655,12 +727,19 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
           children: [
             Icon(Icons.auto_awesome, color: Colors.cyanAccent, size: 20),
             SizedBox(width: 8),
-            Text('AI Test Response', style: TextStyle(color: Colors.white, fontSize: 16)),
+            Text(
+              'AI Test Response',
+              style: TextStyle(color: Colors.white, fontSize: 16),
+            ),
           ],
         ),
         content: Text(
           result,
-          style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 14,
+            height: 1.5,
+          ),
         ),
         actions: [
           TextButton(

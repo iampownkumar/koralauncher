@@ -90,6 +90,32 @@ object GemmaInferenceService {
                     result.success(true)
                 }
 
+                "copyModelFromAdb" -> {
+                    val adbPath = call.argument<String>("adbPath")
+                    val targetPath = call.argument<String>("targetPath")
+                    if (adbPath == null || targetPath == null) {
+                        result.error("MISSING_ARG", "adbPath and targetPath required", null)
+                        return@setMethodCallHandler
+                    }
+                    scope.launch {
+                        try {
+                            val src = java.io.File(adbPath)
+                            if (!src.exists()) {
+                                withContext(Dispatchers.Main) { result.success(false) }
+                                return@launch
+                            }
+                            val dst = java.io.File(targetPath)
+                            dst.parentFile?.mkdirs()
+                            src.copyTo(dst, overwrite = true)
+                            Log.d(TAG, "Copied model from $adbPath → $targetPath (${dst.length()} bytes)")
+                            withContext(Dispatchers.Main) { result.success(true) }
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to copy model from ADB path", e)
+                            withContext(Dispatchers.Main) { result.success(false) }
+                        }
+                    }
+                }
+
                 else -> result.notImplemented()
             }
         }
@@ -101,17 +127,32 @@ object GemmaInferenceService {
 
         Log.d(TAG, "Loading model from: $modelPath")
 
-        val options = LlmInference.LlmInferenceOptions.builder()
-            .setModelPath(modelPath)
-            .setMaxTokens(256)       // Short responses — we only need 1-2 sentences
-            .setTopK(40)
-            .setTemperature(0.8f)    // Slight creativity for varied questions
-            .setRandomSeed(System.currentTimeMillis().toInt())
-            .build()
+        // Try CPU first (most compatible), fall back to GPU
+        try {
+            val cpuOptions = LlmInference.LlmInferenceOptions.builder()
+                .setModelPath(modelPath)
+                .setMaxTokens(256)
+                .setPreferredBackend(LlmInference.Backend.CPU)
+                .build()
+            llmInference = LlmInference.createFromOptions(context, cpuOptions)
+            Log.d(TAG, "Model loaded on CPU successfully")
+        } catch (cpuError: Exception) {
+            Log.w(TAG, "CPU load failed, trying GPU: ${cpuError.message}")
+            try {
+                val gpuOptions = LlmInference.LlmInferenceOptions.builder()
+                    .setModelPath(modelPath)
+                    .setMaxTokens(256)
+                    .setPreferredBackend(LlmInference.Backend.GPU)
+                    .build()
+                llmInference = LlmInference.createFromOptions(context, gpuOptions)
+                Log.d(TAG, "Model loaded on GPU successfully")
+            } catch (gpuError: Exception) {
+                Log.e(TAG, "Both CPU and GPU failed", gpuError)
+                throw gpuError
+            }
+        }
 
-        llmInference = LlmInference.createFromOptions(context, options)
         isLoaded = true
-        Log.d(TAG, "Model loaded successfully")
     }
 
     private fun unloadModel() {
