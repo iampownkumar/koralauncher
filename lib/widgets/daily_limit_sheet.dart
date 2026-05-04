@@ -33,7 +33,7 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
   @override
   void initState() {
     super.initState();
-    _currentLimit = widget.initialLimitMinutes.clamp(1, 480);
+    _currentLimit = widget.initialLimitMinutes.clamp(15, 480);
   }
 
   Future<void> _save() async {
@@ -182,7 +182,7 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
                 // Fine-tune slider
                 Row(
                   children: [
-                    Text('1m',
+                    Text('15m',
                         style: TextStyle(
                             color: Colors.white.withOpacity(0.3),
                             fontSize: 11)),
@@ -198,10 +198,10 @@ class _DailyLimitSheetState extends State<DailyLimitSheet> {
                               enabledThumbRadius: 8),
                         ),
                         child: Slider(
-                          value: _currentLimit.toDouble().clamp(1, 480),
-                          min: 1,
+                          value: _currentLimit.toDouble().clamp(15, 480),
+                          min: 15,
                           max: 480,
-                          divisions: 479,
+                          divisions: 93,
                           onChanged: (v) =>
                               setState(() => _currentLimit = v.round()),
                         ),

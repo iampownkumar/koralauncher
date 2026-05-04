@@ -31,7 +31,7 @@ class _GateSettingsSheetState extends State<GateSettingsSheet> {
   @override
   void initState() {
     super.initState();
-    _currentLimit = widget.initialLimitMinutes.clamp(1, 1440);
+    _currentLimit = widget.initialLimitMinutes.clamp(15, 1440);
     _limitController = TextEditingController(text: _currentLimit.toString());
     _intentionController = TextEditingController(
       text: widget.initialIntention ?? '',

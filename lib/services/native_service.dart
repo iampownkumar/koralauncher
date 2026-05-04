@@ -30,7 +30,10 @@ class NativeService {
       } else if (call.method == 'onHomePressed') {
         final nav = navigatorKey.currentState;
         if (nav != null) {
-          // Close any open drawers/screens and go back to home
+          // Let focus unfocus settle before popping routes to prevent
+          // keyboard dismissal racing with route transitions (drawer lag fix)
+          FocusManager.instance.primaryFocus?.unfocus();
+          await Future.delayed(const Duration(milliseconds: 50));
           nav.popUntil((route) => route.isFirst);
         }
       }
@@ -42,6 +45,7 @@ class NativeService {
 
   static Future<void> _onForegroundApp(String packageName) async {
     if (packageName == _launcherPackage) return;
+    if (!StorageService.isRisingTideMasterEnabled()) return;
     if (!StorageService.isAppFlagged(packageName)) return;
     if (ForegroundInterceptGuard.shouldSkipForPackage(packageName)) return;
 

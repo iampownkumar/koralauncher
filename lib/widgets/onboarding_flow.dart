@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../services/native_service.dart';
 import '../services/storage_service.dart';
@@ -115,15 +117,46 @@ class _OnboardingFlowState extends State<OnboardingFlow>
     return true;
   }
 
-  Future<void> _finish() async {
-    try {
-      final data = await rootBundle.load('assets/korelium-launcher.png');
-      await NativeService.setSystemWallpaper(data.buffer.asUint8List());
-    } catch (e) {
-      debugPrint('Failed to set onboarding wallpaper: $e');
+  Future<void> _finish([WallpaperChoice choice = WallpaperChoice.korelium]) async {
+    switch (choice) {
+      case WallpaperChoice.pureBlack:
+        try {
+          // Create a 1x1 pure black image and set it as wallpaper
+          final recorder = await _createBlackWallpaperBytes();
+          await NativeService.setSystemWallpaper(recorder);
+        } catch (e) {
+          debugPrint('Failed to set black wallpaper: $e');
+        }
+        break;
+      case WallpaperChoice.korelium:
+        try {
+          final data = await rootBundle.load('assets/korelium-launcher.png');
+          await NativeService.setSystemWallpaper(data.buffer.asUint8List());
+        } catch (e) {
+          debugPrint('Failed to set onboarding wallpaper: $e');
+        }
+        break;
+      case WallpaperChoice.keepCurrent:
+        // Don't change wallpaper
+        break;
     }
     await StorageService.completeOnboarding(); // also clears the step key
     widget.onComplete();
+  }
+
+  /// Generate a pure black PNG as bytes using dart:ui Canvas.
+  Future<Uint8List> _createBlackWallpaperBytes() async {
+    const size = 100.0;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder, const Rect.fromLTWH(0, 0, size, size));
+    canvas.drawRect(
+      const Rect.fromLTWH(0, 0, size, size),
+      Paint()..color = const Color(0xFF000000),
+    );
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(size.toInt(), size.toInt());
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    return byteData!.buffer.asUint8List();
   }
 
   @override
@@ -177,7 +210,7 @@ class _OnboardingFlowState extends State<OnboardingFlow>
                   onContinue: () => _goToPage(3),
                   onSkip: _finish,
                 ),
-                _DonePage(onGo: _finish),
+                _DonePage(onGo: (choice) => _finish(choice)),
               ],
             ),
 
@@ -458,11 +491,20 @@ class _PermissionsPage extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────
-// Page 4: Done
+// Page 4: Done — Wallpaper Chooser
 // ─────────────────────────────────────────────────
-class _DonePage extends StatelessWidget {
+enum WallpaperChoice { pureBlack, korelium, keepCurrent }
+
+class _DonePage extends StatefulWidget {
   const _DonePage({required this.onGo});
-  final VoidCallback onGo;
+  final Future<void> Function(WallpaperChoice choice) onGo;
+
+  @override
+  State<_DonePage> createState() => _DonePageState();
+}
+
+class _DonePageState extends State<_DonePage> {
+  WallpaperChoice _selected = WallpaperChoice.korelium;
 
   @override
   Widget build(BuildContext context) {
@@ -483,31 +525,151 @@ class _DonePage extends StatelessWidget {
                 ),
               ),
               child: const Icon(
-                Icons.check_rounded,
+                Icons.wallpaper_rounded,
                 color: Colors.cyanAccent,
                 size: 30,
               ),
             ),
             const SizedBox(height: 36),
             const Text(
-              'Kora is ready.',
+              'Choose your wallpaper',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 32,
+                fontSize: 28,
                 fontWeight: FontWeight.w800,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
-              'Start simple.\nKora will set its focused wallpaper to your home and lock screen to reduce visual clutter.\n\nYou can enable more controls anytime.',
+              'Set your home and lock screen wallpaper.\nYou can change this anytime.',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.5),
-                fontSize: 16,
+                fontSize: 14,
                 height: 1.5,
               ),
             ),
+            const SizedBox(height: 32),
+            _WallpaperOption(
+              icon: Icons.brightness_1,
+              iconColor: Colors.white24,
+              title: 'Pure Black',
+              subtitle: 'Minimal. Saves battery on OLED.',
+              isSelected: _selected == WallpaperChoice.pureBlack,
+              onTap: () => setState(() => _selected = WallpaperChoice.pureBlack),
+            ),
+            const SizedBox(height: 12),
+            _WallpaperOption(
+              icon: Icons.auto_awesome,
+              iconColor: Colors.cyanAccent,
+              title: 'Korelium Wallpaper',
+              subtitle: 'Our brand wallpaper — focused and beautiful.',
+              isSelected: _selected == WallpaperChoice.korelium,
+              onTap: () => setState(() => _selected = WallpaperChoice.korelium),
+            ),
+            const SizedBox(height: 12),
+            _WallpaperOption(
+              icon: Icons.photo_outlined,
+              iconColor: Colors.white54,
+              title: 'Keep Current',
+              subtitle: "Don't change your wallpaper.",
+              isSelected: _selected == WallpaperChoice.keepCurrent,
+              onTap: () => setState(() => _selected = WallpaperChoice.keepCurrent),
+            ),
             const Spacer(),
-            _PrimaryButton('Go to Home', onGo),
+            _PrimaryButton('Go to Home', () => widget.onGo(_selected)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WallpaperOption extends StatelessWidget {
+  const _WallpaperOption({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.isSelected,
+    required this.onTap,
+  });
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.cyanAccent.withOpacity(0.08)
+              : Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? Colors.cyanAccent.withOpacity(0.5)
+                : Colors.white.withOpacity(0.08),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.white70,
+                      fontSize: 15,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.35),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected ? Colors.cyanAccent : Colors.transparent,
+                border: Border.all(
+                  color: isSelected ? Colors.cyanAccent : Colors.white24,
+                  width: 2,
+                ),
+              ),
+              child: isSelected
+                  ? const Icon(Icons.check, size: 14, color: Colors.black)
+                  : null,
+            ),
           ],
         ),
       ),

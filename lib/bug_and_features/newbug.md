@@ -1,12 +1,25 @@
-bug 1: [FIXED] when we freshly installed the app when i set the inentions in the first that popups it is not adding in the todo list task but 
-        when i edit the same intention top bar and add some text it is adding perfectly.
-        (Fix: Added missing TodoService sync to the onboarding flow.)
-bug 2: [FIXED] when i add the app in the rising tide system the default is 10 mints; but when i try to edit that to 1 hour or something else it is changed. but the rising tide system is still questiong because it is not updated properply so this way i constatntly uninstalled my own app and never used it. The timing and others are updating but the questiong sstem is not updating
-        (Fix: Added AICacheService.invalidate(packageName) call after saving the limit — in both GateSettingsSheet (interception screen) and DailyLimitSheet (TidePool screen). The cached AI question for the old stage was persisting. Now it's cleared on every limit change so the next interception generates a fresh message.)
+Kora launcher 
+1 While launcher the search bar when i press the press minimize or home screen button it is just lagging. 
+2 while setting the app we should offer 3 different of home and lock screen 
+- a pure black screen both home and lock screen 
+- our korelium brand anime image walpaper 
+- don't change the wallpaper that user already set and continue to launch the app 
+-in the android 15 when i use 3 gester navigation when i swipe center of the screen to left or right the quested app will switch . It is working in android 16 but in my mobile it is not working so fix it. And be very careful.
+And inthir it is called swipe horizontal to switch the apps
 
-bug 3: so now lets come with the real question asking system. even thoug i completed the todo list taks it is still aaksing in the interuptin gwhen i try to open the flagged app. and the questiong is really not good at all . 
 
-bug 4: we have to rething and design the risign tide system and we need to change the positions of our entire ap where goes where 
+3 now rising tide system: a lot of bugs and flow needs to be fixed 
+- even though when i disabled the rising tide system it via toggle button it is still working 
+- change the flagged app app minimum time limit is 15 minutes 
 
-bug 5: [FIXED] if i marked the todo list as completed the whole text is complete not vissible becuast that like is hding verhign may be we should find some way to fix it .
-        (Fix: Raised completed text color from white38 → white60, card background from 2% → 5% opacity, border from 5% → 8% opacity. Also added explicit decorationColor: white38 so the strikethrough line is subtly dimmer than the text, keeping the hierarchy clear.)
+- while using any app  and suddenly minimize th search app drawer is stuck and lagging like a crashed app and then it is minimizing 
+- the 4 stage errors 
+- while heads up needs only warning 
+-stage 2 needs to trigger while the user using the app and when the time limit reached, so we need a program to capture the backend time listening and dawns a signal  to rising tide system and then ai then it will generate the questions
+-when i turn of the rising tide system the ai is still doing the work but it should not be like that. 
+
+feat : features or redesign 
+- when i design the app in and when I have the todolot in the home screen it is just constantly remainsd me to add todo lista bs finish the task because it is staring up the home screen but this also creates the conflict of the wallpaper. Because it is taking half of my home screen we need to design this effectively. Because that design helped me a lot but now i feel like i am missing it and swipe open th todo and and click add button annoying and boring so i am not even adign any todo list only daily intentions only. 
+- these are some serious ux needednto fix. Because I myslef once switched back to native launcher.
+- the left swipe open rising tide system poll manager and we need to redesign the entire app to how user needa it not the other way around . 
+-

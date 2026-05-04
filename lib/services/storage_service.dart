@@ -7,7 +7,7 @@ import 'rising_tide_service.dart';
 class StorageService {
   static const String _flaggedAppsKey = 'flagged_apps';
   static const String _risingTideMasterKey = 'rising_tide_master_enabled';
-  static const int _defaultDailyLimitMinutes = 10;
+  static const int _defaultDailyLimitMinutes = 15;
   static const String _appLimitPrefix = 'rt_limit_minutes_';
   static const String _todayOpensPrefix = 'rt_opens_';
   static late SharedPreferences _prefs;
@@ -68,7 +68,7 @@ class StorageService {
     String packageName,
     int minutes,
   ) async {
-    final m = minutes.clamp(1, 24 * 60);
+    final m = minutes.clamp(15, 24 * 60);
     await _prefs.setInt('$_appLimitPrefix$packageName', m);
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/rising_tide_stage.dart';
+import '../services/storage_service.dart';
 import 'ai_context_builder.dart';
 import 'ai_cache_service.dart';
 import 'gemini_nano_bridge.dart';
@@ -83,6 +84,11 @@ class AIPromptEngine {
   }) async {
     // Skip for Whisper stage — no interception needed.
     if (stage == RisingTideStage.whisper) {
+      return const AIMessage(text: '', source: AIMessageSource.none);
+    }
+
+    // Don't waste battery on AI when Rising Tide is globally disabled
+    if (!StorageService.isRisingTideMasterEnabled()) {
       return const AIMessage(text: '', source: AIMessageSource.none);
     }
 

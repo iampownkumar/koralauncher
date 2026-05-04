@@ -215,29 +215,106 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTinyTodoChip() {
     final todos = TodoService.todos;
-    final pending = todos.where((t) => !t.isCompleted).length;
+    final pending = todos.where((t) => !t.isCompleted).toList();
+    final topTask = pending.isNotEmpty ? pending.first.title : null;
+    final count = pending.length;
 
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (c, a, s) => const TodoScreen(),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
+    if (count == 0 && todos.isEmpty) {
+      return GestureDetector(
+        onTap: () => _showQuickTodoSheet(),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white.withOpacity(0.06)),
           ),
-        ).then((_) => _controller.triggerRefresh());
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add_circle_outline, color: Colors.white38, size: 14),
+              const SizedBox(width: 6),
+              Text(
+                'Add a task',
+                style: TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (count == 0) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withOpacity(0.08),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
-          '$pending tasks today',
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
+          'All done! 🎉',
+          style: TextStyle(color: Colors.white70, fontSize: 12),
         ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () => _showQuickTodoSheet(),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        constraints: const BoxConstraints(maxWidth: 280),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.circle_outlined, color: Colors.cyanAccent.withOpacity(0.7), size: 14),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                topTask ?? '',
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+            if (count > 1) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.cyanAccent.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '+${count - 1}',
+                  style: TextStyle(
+                    color: Colors.cyanAccent.withOpacity(0.8),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showQuickTodoSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => _QuickTodoSheet(
+        onChanged: () {
+          _controller.triggerRefresh();
+          if (mounted) setState(() {});
+        },
       ),
     );
   }
@@ -559,6 +636,259 @@ class _HomeScreenState extends State<HomeScreen> {
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: Colors.white, size: 24),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────
+// Quick Todo Bottom Sheet — compact task manager from home
+// ─────────────────────────────────────────────────
+class _QuickTodoSheet extends StatefulWidget {
+  const _QuickTodoSheet({required this.onChanged});
+  final VoidCallback onChanged;
+
+  @override
+  State<_QuickTodoSheet> createState() => _QuickTodoSheetState();
+}
+
+class _QuickTodoSheetState extends State<_QuickTodoSheet> {
+  final _addController = TextEditingController();
+  final _addFocusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _addController.dispose();
+    _addFocusNode.dispose();
+    super.dispose();
+  }
+
+  Future<void> _addTask() async {
+    final text = _addController.text.trim();
+    if (text.isEmpty) return;
+    await TodoService.addTodo(text);
+    _addController.clear();
+    widget.onChanged();
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.of(context).viewInsets.bottom;
+    final todos = TodoService.todos;
+    final pending = todos.where((t) => !t.isCompleted).toList();
+    final completed = todos.where((t) => t.isCompleted).toList();
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottom),
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.55,
+        ),
+        decoration: const BoxDecoration(
+          color: Color(0xFF0F172A),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(top: BorderSide(color: Colors.white10)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle_outline,
+                        color: Colors.cyanAccent, size: 18),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Tasks',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (pending.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.cyanAccent.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${pending.length} left',
+                          style: TextStyle(
+                            color: Colors.cyanAccent.withOpacity(0.8),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          PageRouteBuilder(
+                            pageBuilder: (c, a, s) => const TodoScreen(),
+                            transitionDuration: Duration.zero,
+                            reverseTransitionDuration: Duration.zero,
+                          ),
+                        ).then((_) => widget.onChanged());
+                      },
+                      child: Text(
+                        'Full view',
+                        style: TextStyle(
+                          color: Colors.cyanAccent.withOpacity(0.6),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Quick add field
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _addController,
+                        focusNode: _addFocusNode,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 14),
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _addTask(),
+                        decoration: InputDecoration(
+                          hintText: 'Add a task...',
+                          hintStyle: TextStyle(
+                            color: Colors.white.withOpacity(0.25),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.06),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: _addTask,
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.cyanAccent.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.add,
+                            color: Colors.cyanAccent, size: 20),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Task list
+              if (todos.isNotEmpty)
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+                    children: [
+                      // Pending tasks first
+                      ...pending.map((todo) => _buildTodoRow(todo, false)),
+                      // Completed tasks (dimmed)
+                      ...completed.map((todo) => _buildTodoRow(todo, true)),
+                    ],
+                  ),
+                ),
+              if (todos.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    'No tasks yet. Type above to add one.',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.35),
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTodoRow(dynamic todo, bool isCompleted) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: GestureDetector(
+        onTap: () async {
+          await TodoService.toggleTodo(todo.id);
+          widget.onChanged();
+          if (mounted) setState(() {});
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isCompleted
+                ? Colors.white.withOpacity(0.03)
+                : Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                isCompleted ? Icons.check_circle : Icons.circle_outlined,
+                color: isCompleted
+                    ? Colors.cyanAccent.withOpacity(0.5)
+                    : Colors.white38,
+                size: 18,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  todo.title,
+                  style: TextStyle(
+                    color: isCompleted
+                        ? Colors.white.withOpacity(0.3)
+                        : Colors.white.withOpacity(0.8),
+                    fontSize: 14,
+                    decoration:
+                        isCompleted ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

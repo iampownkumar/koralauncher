@@ -43,6 +43,13 @@ class _AppDrawerScreenState extends State<AppDrawerScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Pre-emptively unfocus the search field when the app goes to background
+    // (e.g. Home button pressed) to prevent lag caused by keyboard dismissal
+    // racing with Navigator.popUntil from onHomePressed.
+    if (state == AppLifecycleState.paused) {
+      _searchFocusNode.unfocus();
+      _searchController.clear();
+    }
     // Refresh when user returns to Kora (e.g. after adding a shortcut in Firefox)
     if (state == AppLifecycleState.resumed) {
       _refreshData();
@@ -86,7 +93,8 @@ class _AppDrawerScreenState extends State<AppDrawerScreen>
       }
 
       // Regular apps — check Rising Tide flag first
-      final isFlagged = StorageService.isAppFlagged(app.packageName);
+      final isFlagged = StorageService.isRisingTideMasterEnabled() &&
+          StorageService.isAppFlagged(app.packageName);
       if (isFlagged) {
         _searchController.clear();
         // Build a minimal AppInfo to pass to InterceptionScreen
