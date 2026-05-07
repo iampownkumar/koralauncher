@@ -136,6 +136,14 @@ class _OnboardingFlowState extends State<OnboardingFlow>
           debugPrint('Failed to set onboarding wallpaper: $e');
         }
         break;
+      case WallpaperChoice.koraWaves:
+        try {
+          final data = await rootBundle.load('assets/wallpapers/kora_waves.png');
+          await NativeService.setSystemWallpaper(data.buffer.asUint8List());
+        } catch (e) {
+          debugPrint('Failed to set Kora Waves wallpaper: $e');
+        }
+        break;
       case WallpaperChoice.keepCurrent:
         // Don't change wallpaper
         break;
@@ -493,7 +501,7 @@ class _PermissionsPage extends StatelessWidget {
 // ─────────────────────────────────────────────────
 // Page 4: Done — Wallpaper Chooser
 // ─────────────────────────────────────────────────
-enum WallpaperChoice { pureBlack, korelium, keepCurrent }
+enum WallpaperChoice { pureBlack, korelium, koraWaves, keepCurrent }
 
 class _DonePage extends StatefulWidget {
   const _DonePage({required this.onGo});
@@ -565,6 +573,15 @@ class _DonePageState extends State<_DonePage> {
               subtitle: 'Our brand wallpaper — focused and beautiful.',
               isSelected: _selected == WallpaperChoice.korelium,
               onTap: () => setState(() => _selected = WallpaperChoice.korelium),
+            ),
+            const SizedBox(height: 12),
+            _WallpaperOption(
+              icon: Icons.waves,
+              iconColor: const Color(0xFF06B6D4),
+              title: 'Kora Waves',
+              subtitle: 'Premium dark waves — serene and modern.',
+              isSelected: _selected == WallpaperChoice.koraWaves,
+              onTap: () => setState(() => _selected = WallpaperChoice.koraWaves),
             ),
             const SizedBox(height: 12),
             _WallpaperOption(

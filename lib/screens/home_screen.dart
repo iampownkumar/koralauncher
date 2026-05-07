@@ -513,6 +513,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildUsageStats() {
     final hasPermission = _controller.hasUsagePermission;
     final totalUsage = UsageService.getVisibleTotalUsage(minRoundedMinutes: 1);
+    final flaggedCount = StorageService.getFlaggedApps().length;
 
     return GestureDetector(
       onTap: () {
@@ -532,13 +533,13 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
           color: hasPermission
-              ? Colors.black.withOpacity(0.3)
-              : Colors.redAccent.withOpacity(0.2),
+              ? Colors.black.withValues(alpha: 0.3)
+              : Colors.redAccent.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: hasPermission
-                ? Colors.white.withOpacity(0.2)
-                : Colors.redAccent.withOpacity(0.4),
+                ? Colors.white.withValues(alpha: 0.2)
+                : Colors.redAccent.withValues(alpha: 0.4),
           ),
         ),
         child: Row(
@@ -558,6 +559,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            if (hasPermission && flaggedCount > 0) ...[
+              Container(
+                margin: const EdgeInsets.only(left: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF06B6D4).withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '🌊$flaggedCount',
+                  style: const TextStyle(fontSize: 9),
+                ),
+              ),
+            ],
           ],
         ),
       ),

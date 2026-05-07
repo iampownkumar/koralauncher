@@ -49,6 +49,7 @@ flutter:
   assets:
     - assets/icon.png
     - assets/korelium-launcher.png
+    - assets/wallpapers/
 
 flutter_launcher_icons:
   android: "launcher_icon"
