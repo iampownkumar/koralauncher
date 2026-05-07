@@ -138,4 +138,47 @@ class UsageService {
       await Future.delayed(interval);
     }
   }
+
+  /// Returns total usage minutes for each of the last 7 days.
+  /// Index 0 = 6 days ago, index 6 = today.
+  static Future<List<DailyTotal>> getWeeklyUsage() async {
+    if (!Platform.isAndroid) return List.generate(7, (_) => DailyTotal(date: DateTime.now(), totalMinutes: 0));
+
+    final now = DateTime.now();
+    final List<DailyTotal> result = [];
+
+    for (int i = 6; i >= 0; i--) {
+      final day = DateTime(now.year, now.month, now.day).subtract(Duration(days: i));
+      final dayEnd = day.add(const Duration(days: 1));
+
+      try {
+        final rawStats = await NativeService.getRawUsageStats(
+          day.millisecondsSinceEpoch,
+          dayEnd.millisecondsSinceEpoch,
+        );
+
+        int totalMinutes = 0;
+        for (final entry in rawStats.entries) {
+          if (!shouldCountPackage(entry.key)) continue;
+          // Only count apps that are launchable (in our cached list)
+          final isLaunchable = LauncherService.cachedApps
+              .any((app) => app.packageName == entry.key);
+          if (!isLaunchable) continue;
+          final minutes = _roundedMinutes(Duration(milliseconds: entry.value));
+          if (minutes >= 1) totalMinutes += minutes;
+        }
+        result.add(DailyTotal(date: day, totalMinutes: totalMinutes));
+      } catch (e) {
+        result.add(DailyTotal(date: day, totalMinutes: 0));
+      }
+    }
+
+    return result;
+  }
+}
+
+class DailyTotal {
+  final DateTime date;
+  final int totalMinutes;
+  const DailyTotal({required this.date, required this.totalMinutes});
 }

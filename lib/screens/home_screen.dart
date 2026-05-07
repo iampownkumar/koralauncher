@@ -7,8 +7,7 @@ import '../services/todo_service.dart';
 import 'app_drawer_screen.dart';
 import '../widgets/goal_setter.dart';
 import 'todo_screen.dart';
-import 'usage_dashboard_screen.dart';
-import 'tide_pool_screen.dart';
+import 'unified_dashboard_screen.dart';
 import 'permissions_screen.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
@@ -131,7 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           PageRouteBuilder(
                             pageBuilder:
                                 (context, animation, secondaryAnimation) =>
-                                    const TidePoolScreen(),
+                                    const UnifiedDashboardScreen(),
                             transitionDuration: Duration.zero,
                             reverseTransitionDuration: Duration.zero,
                           ),
@@ -517,7 +516,7 @@ class _HomeScreenState extends State<HomeScreen> {
           context,
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
-                const UsageDashboardScreen(),
+                const UnifiedDashboardScreen(),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
                   return FadeTransition(opacity: animation, child: child);
