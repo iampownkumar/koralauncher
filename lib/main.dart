@@ -21,8 +21,8 @@ Future<void> main() async {
 
   await SentryFlutter.init(
     (options) {
-      options.dsn = 'YOUR_SENTRY_DSN_HERE';
-      options.tracesSampleRate = 1.0;
+      options.dsn = const String.fromEnvironment('SENTRY_DSN');
+      options.tracesSampleRate = 0.2; // 20% sampling for production
     },
     appRunner: () {
       FlutterError.onError = (details) {
