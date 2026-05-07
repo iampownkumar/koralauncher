@@ -63,7 +63,10 @@ class _HomeScreenState extends State<HomeScreen> {
         transitionDuration: const Duration(milliseconds: 300),
       ),
     ).then((_) {
-      _controller.refreshHomeState();
+      // Lightweight: only re-reads goal from storage.
+      // The full heavy refresh (permissions, usage, etc.) is already
+      // handled by the HomeController's lifecycle observer on resume.
+      _controller.triggerRefresh();
     });
   }
 

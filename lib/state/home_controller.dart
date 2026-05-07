@@ -24,6 +24,12 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   GlassTint currentTint = GlassTint.medium;
   String? wallpaperPath;
 
+  /// Guards against concurrent refreshHomeState calls.  When the drawer is
+  /// dismissed by the Home button, both the lifecycle observer (resumed) and
+  /// the Navigator .then() callback fire within the same frame, causing two
+  /// heavy refresh passes to run simultaneously.  This flag collapses them.
+  bool _refreshInFlight = false;
+
   void init() {
     WidgetsBinding.instance.addObserver(this);
     _loadInitialData();
@@ -40,7 +46,13 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused) {
       FocusManager.instance.primaryFocus?.unfocus();
     } else if (state == AppLifecycleState.resumed) {
-      refreshHomeState();
+      // Wait for pop animations to finish before doing any heavy work.
+      // The Home gesture sequence is: paused → resumed → onNewIntent,
+      // and the popUntil animation takes ~300ms.  We schedule the refresh
+      // well after that so it never competes with rendering.
+      Future.delayed(const Duration(milliseconds: 500), () {
+        refreshHomeState();
+      });
     }
   }
 
@@ -62,29 +74,47 @@ class HomeController extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> refreshHomeState() async {
-    final isDefault = await NativeService.isDefaultLauncher();
-    final hasUsage = await NativeService.hasUsagePermission();
-    final hasAccessibility = await NativeService.hasAccessibilityPermission();
-    await UsageService.refreshUsage();
-    await TodoService.refreshTodos();
-    final newGoal = StorageService.getDailyIntention();
-    await RisingTideService.syncInterceptionState();
-    final tint = await GlassSettingsService.getTintPreference();
-    final wp = await WallpaperService.getSavedWallpaperPath();
+    // Collapse concurrent invocations — the second call becomes a no-op
+    // while the first is still executing.
+    if (_refreshInFlight) return;
+    _refreshInFlight = true;
 
-    if (isDefaultLauncher != isDefault ||
-        hasUsagePermission != hasUsage ||
-        hasAccessibilityPermission != hasAccessibility ||
-        goal != newGoal ||
-        currentTint != tint ||
-        wallpaperPath != wp) {
-      isDefaultLauncher = isDefault;
-      hasUsagePermission = hasUsage;
-      hasAccessibilityPermission = hasAccessibility;
-      goal = newGoal;
-      currentTint = tint;
-      wallpaperPath = wp;
-      notifyListeners();
+    try {
+      // Run the three independent permission checks concurrently instead of
+      // sequentially.  This halves the wall-clock time of the refresh.
+      final permissionFutures = [
+        NativeService.isDefaultLauncher(),
+        NativeService.hasUsagePermission(),
+        NativeService.hasAccessibilityPermission(),
+      ];
+      final results = await Future.wait(permissionFutures);
+      final isDefault = results[0];
+      final hasUsage = results[1];
+      final hasAccessibility = results[2];
+
+      await UsageService.refreshUsage();
+      await TodoService.refreshTodos();
+      final newGoal = StorageService.getDailyIntention();
+      await RisingTideService.syncInterceptionState();
+      final tint = await GlassSettingsService.getTintPreference();
+      final wp = await WallpaperService.getSavedWallpaperPath();
+
+      if (isDefaultLauncher != isDefault ||
+          hasUsagePermission != hasUsage ||
+          hasAccessibilityPermission != hasAccessibility ||
+          goal != newGoal ||
+          currentTint != tint ||
+          wallpaperPath != wp) {
+        isDefaultLauncher = isDefault;
+        hasUsagePermission = hasUsage;
+        hasAccessibilityPermission = hasAccessibility;
+        goal = newGoal;
+        currentTint = tint;
+        wallpaperPath = wp;
+        notifyListeners();
+      }
+    } finally {
+      _refreshInFlight = false;
     }
   }
 

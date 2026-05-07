@@ -29,11 +29,10 @@ class NativeService {
         await LauncherService.refreshApps();
       } else if (call.method == 'onHomePressed') {
         final nav = navigatorKey.currentState;
-        if (nav != null) {
-          // Let focus unfocus settle before popping routes to prevent
-          // keyboard dismissal racing with route transitions (drawer lag fix)
-          FocusManager.instance.primaryFocus?.unfocus();
-          await Future.delayed(const Duration(milliseconds: 50));
+        if (nav != null && nav.mounted) {
+          // The keyboard is already dismissed by the drawer's paused
+          // handler (which fires before onHomePressed), so we can pop
+          // immediately — no delay needed.
           nav.popUntil((route) => route.isFirst);
         }
       }

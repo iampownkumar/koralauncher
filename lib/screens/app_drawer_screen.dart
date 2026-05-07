@@ -11,7 +11,6 @@ import '../widgets/app_list_item.dart';
 import '../widgets/app_long_press_menu.dart';
 import '../widgets/accessibility_disclosure_sheet.dart';
 import 'interception_screen.dart';
-import 'dart:ui';
 
 class AppDrawerScreen extends StatefulWidget {
   const AppDrawerScreen({super.key});
@@ -43,16 +42,16 @@ class _AppDrawerScreenState extends State<AppDrawerScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Pre-emptively unfocus the search field when the app goes to background
-    // (e.g. Home button pressed) to prevent lag caused by keyboard dismissal
-    // racing with Navigator.popUntil from onHomePressed.
     if (state == AppLifecycleState.paused) {
       _searchFocusNode.unfocus();
-      _searchController.clear();
-    }
-    // Refresh when user returns to Kora (e.g. after adding a shortcut in Firefox)
-    if (state == AppLifecycleState.resumed) {
-      _refreshData();
+      // Remove the drawer route WITHOUT animation.  Using pop() here would
+      // trigger the reverse slide transition, which plays visibly as a
+      // "rushing to close" effect during the recents screen.  removeRoute
+      // instantly deletes the route from the stack — no animation, no flash.
+      final route = ModalRoute.of(context);
+      if (route != null && mounted) {
+        Navigator.of(context).removeRoute(route);
+      }
     }
   }
 
@@ -157,7 +156,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen>
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, _) {
         if (didPop) {
           _searchFocusNode.unfocus();
         }
@@ -177,13 +176,14 @@ class _AppDrawerScreenState extends State<AppDrawerScreen>
           backgroundColor: Colors.transparent,
           body: Stack(
             children: [
-              // Dark Blur Background
-              BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              // Dark translucent background.
+              // NOTE: BackdropFilter with blur(sigma 15) was removed because
+              // it is extremely GPU-intensive and causes massive frame drops
+              // during system gesture animations (Home swipe-up, Recents).
+              // A simple dark overlay gives a similar visual at near-zero cost.
+              Positioned.fill(
                 child: Container(
-                  color: Colors.black.withOpacity(0.5),
-                  width: double.infinity,
-                  height: double.infinity,
+                  color: Colors.black.withOpacity(0.85),
                 ),
               ),
               SafeArea(
