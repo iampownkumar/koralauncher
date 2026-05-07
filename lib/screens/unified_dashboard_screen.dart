@@ -12,7 +12,7 @@ import '../widgets/app_long_press_menu.dart';
 import '../widgets/accessibility_disclosure_sheet.dart';
 import '../widgets/permission_gate_card.dart';
 import 'interception_screen.dart';
-import 'package:android_intent_plus/android_intent.dart';
+
 
 /// Unified dashboard that merges Usage Dashboard + Tide Pool (Rising Tide)
 /// into a single, premium screen.
@@ -79,8 +79,7 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
       return DayUsage(
         label: dayNames[dayIndex],
         minutes: d.totalMinutes,
-        isToday: d.date.weekday == today &&
-            d.date.day == DateTime.now().day,
+        isToday: d.date.weekday == today && d.date.day == DateTime.now().day,
       );
     }).toList();
 
@@ -99,8 +98,13 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
         _hasAccessibility = hasAccess;
         _weeklyData = weeklyChartData;
         _sortedApps = apps
-            .where((app) =>
-                (UsageService.getAppUsage(app.packageName).inMilliseconds + 30000) ~/ 60000 >= 1)
+            .where(
+              (app) =>
+                  (UsageService.getAppUsage(app.packageName).inMilliseconds +
+                          30000) ~/
+                      60000 >=
+                  1,
+            )
             .toList();
         _isLoading = false;
       });
@@ -116,19 +120,17 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0A0A1A),
-              Color(0xFF050510),
-              Color(0xFF080818),
-            ],
+            colors: [Color(0xFF0A0A1A), Color(0xFF050510), Color(0xFF080818)],
           ),
         ),
         child: SafeArea(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator(color: Color(0xFF06B6D4)))
+              ? const Center(
+                  child: CircularProgressIndicator(color: Color(0xFF06B6D4)),
+                )
               : !_hasUsagePermission
-                  ? _buildPermissionGate()
-                  : _buildDashboard(),
+              ? _buildPermissionGate()
+              : _buildDashboard(),
         ),
       ),
     );
@@ -142,7 +144,8 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
           child: PermissionGateCard(
             icon: Icons.bar_chart_outlined,
             title: 'Enable Usage Access',
-            body: 'Usage Access is needed for screen time, app usage stats, and daily limits.',
+            body:
+                'Usage Access is needed for screen time, app usage stats, and daily limits.',
             buttonLabel: 'Open Usage Access',
             onButton: () async {
               await NativeService.openUsageSettings();
@@ -159,7 +162,11 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.white70, size: 20),
+            icon: const Icon(
+              Icons.arrow_back_ios,
+              color: Colors.white70,
+              size: 20,
+            ),
             onPressed: () => Navigator.pop(context),
           ),
           const Expanded(
@@ -208,10 +215,7 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: [
-              _buildAllAppsList(),
-              _buildFlaggedAppsList(),
-            ],
+            children: [_buildAllAppsList(), _buildFlaggedAppsList()],
           ),
         ),
       ],
@@ -242,7 +246,7 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
               ),
             ),
           ),
-          WeeklyBarChart(days: _weeklyData, height: 110),
+          WeeklyBarChart(days: _weeklyData, height: 130),
         ],
       ),
     );
@@ -261,7 +265,8 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
         children: [
           Icon(
             Icons.waves,
-            color: _hasAccessibility && StorageService.isRisingTideMasterEnabled()
+            color:
+                _hasAccessibility && StorageService.isRisingTideMasterEnabled()
                 ? const Color(0xFF06B6D4)
                 : Colors.white30,
             size: 22,
@@ -282,8 +287,8 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
                 Text(
                   _hasAccessibility
                       ? (StorageService.isRisingTideMasterEnabled()
-                          ? 'Active — flagged apps have gates'
-                          : 'Off — tap to enable')
+                            ? 'Active — flagged apps have gates'
+                            : 'Off — tap to enable')
                       : 'Accessibility required',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.35),
@@ -294,7 +299,8 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
             ),
           ),
           Switch(
-            value: _hasAccessibility && StorageService.isRisingTideMasterEnabled(),
+            value:
+                _hasAccessibility && StorageService.isRisingTideMasterEnabled(),
             activeThumbColor: const Color(0xFF06B6D4),
             activeTrackColor: const Color(0xFF06B6D4).withValues(alpha: 0.35),
             inactiveThumbColor: Colors.white24,
@@ -336,8 +342,16 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
         dividerColor: Colors.transparent,
         labelColor: Colors.white,
         unselectedLabelColor: Colors.white.withValues(alpha: 0.35),
-        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 1),
-        unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w400, letterSpacing: 1),
+        labelStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+          letterSpacing: 1,
+        ),
         tabs: [
           const Tab(text: 'ALL APPS'),
           Tab(text: 'FLAGGED ($flaggedCount)'),
@@ -358,9 +372,8 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
 
     return ListView.builder(
       padding: const EdgeInsets.only(top: 4, bottom: 100),
-      itemCount: _sortedApps.length + 1, // +1 for settings card
+      itemCount: _sortedApps.length,
       itemBuilder: (context, index) {
-        if (index == _sortedApps.length) return _buildSettingsCard();
 
         final app = _sortedApps[index];
         final isFlagged = StorageService.isAppFlagged(app.packageName);
@@ -387,9 +400,13 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
             }
           },
           onLongPress: () {
-            showAppLongPressMenu(context, app, onChanged: () {
-              if (mounted) setState(() {});
-            });
+            showAppLongPressMenu(
+              context,
+              app,
+              onChanged: () {
+                if (mounted) setState(() {});
+              },
+            );
           },
           onFlagTap: () async {
             await StorageService.toggleFlaggedApp(app.packageName);
@@ -443,7 +460,11 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.waves, size: 48, color: Colors.white.withValues(alpha: 0.15)),
+            Icon(
+              Icons.waves,
+              size: 48,
+              color: Colors.white.withValues(alpha: 0.15),
+            ),
             const SizedBox(height: 12),
             Text(
               'No apps flagged yet',
@@ -480,7 +501,11 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
           isFlagged: true,
           limitMinutes: limit,
           onTap: () {
-            showAppLongPressMenu(context, app, onChanged: () => setState(() {}));
+            showAppLongPressMenu(
+              context,
+              app,
+              onChanged: () => setState(() {}),
+            );
           },
           onFlagTap: () async {
             await StorageService.toggleFlaggedApp(app.packageName);
@@ -505,74 +530,4 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
     );
   }
 
-  Widget _buildSettingsCard() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'LAUNCHER SETTINGS',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.3),
-              fontSize: 10,
-              letterSpacing: 2,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _settingsButton(
-                  'Home Settings',
-                  Icons.home_outlined,
-                  () => NativeService.openDefaultLauncherSettings(),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _settingsButton(
-                  'Wallpaper',
-                  Icons.wallpaper_outlined,
-                  () => const AndroidIntent(action: 'android.intent.action.SET_WALLPAPER').launch(),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _settingsButton(String label, IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white54, size: 16),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w500),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

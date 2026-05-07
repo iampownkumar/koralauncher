@@ -336,8 +336,6 @@ Give these exact names to your AI:
 **Month 2:** `IntentionGateService` fake detection + `MidnightResetService`
 
 **Month 3:** `InsightEngine` + 30-day analytics screen
-flutter build appbundle --release --dart-define-from-file=.env
-
 
 ---
 

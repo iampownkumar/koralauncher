@@ -71,7 +71,7 @@ class _WeeklyBarChartState extends State<WeeklyBarChart>
             crossAxisAlignment: CrossAxisAlignment.end,
             children: widget.days.map((day) {
               final barHeight = maxMinutes > 0
-                  ? (day.minutes / maxMinutes) * (widget.height - 28) * _animation.value
+                  ? (day.minutes / maxMinutes) * (widget.height - 48) * _animation.value
                   : 0.0;
 
               return Expanded(

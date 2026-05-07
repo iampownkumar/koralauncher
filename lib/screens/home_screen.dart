@@ -154,38 +154,42 @@ class _HomeScreenState extends State<HomeScreen> {
                     height: double.infinity,
                     child: SafeArea(
                       child: SingleChildScrollView(
-                        child: SizedBox(
-                          height:
-                              MediaQuery.of(context).size.height -
-                              MediaQuery.of(context).padding.top -
-                              MediaQuery.of(context).padding.bottom,
-                          child: Column(
-                            children: [
-                              HomeBanners(controller: _controller),
-                              if (StorageService.hasCompletedOnboarding() &&
-                                  !_controller.isDefaultLauncher &&
-                                  !_controller.hideDefaultLauncherBanner)
-                                _buildDefaultLauncherBanner(),
-                              _buildTopInfoBar(),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight:
+                                MediaQuery.of(context).size.height -
+                                MediaQuery.of(context).padding.top -
+                                MediaQuery.of(context).padding.bottom,
+                          ),
+                          child: IntrinsicHeight(
+                            child: Column(
+                              children: [
+                                HomeBanners(controller: _controller),
+                                if (StorageService.hasCompletedOnboarding() &&
+                                    !_controller.isDefaultLauncher &&
+                                    !_controller.hideDefaultLauncherBanner)
+                                  _buildDefaultLauncherBanner(),
+                                _buildTopInfoBar(),
 
-                              const SizedBox(height: 16),
+                                const SizedBox(height: 16),
 
-                              if (!_controller.showGoalSetter) ...[
-                                _buildTinyTodoChip(),
+                                if (!_controller.showGoalSetter) ...[
+                                  _buildTinyTodoChip(),
+                                ],
+
+                                const Spacer(flex: 3),
+
+                                _buildTimeAndDate(),
+                                const SizedBox(
+                                  height: 20,
+                                ), //change here for space the time  widget
+
+                                _buildQuickAccessDock(),
+                                const SizedBox(height: 7),
+
+                                _buildSwipeHint(),
                               ],
-
-                              const Spacer(flex: 3),
-
-                              _buildTimeAndDate(),
-                              const SizedBox(
-                                height: 20,
-                              ), //change here for space the time  widget
-
-                              _buildQuickAccessDock(),
-                              const SizedBox(height: 7),
-
-                              _buildSwipeHint(),
-                            ],
+                            ),
                           ),
                         ),
                       ),
