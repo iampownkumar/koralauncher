@@ -1,0 +1,12 @@
+Kora is an open-source, beautifully designed, behavioral Android launcher. It is built to help users manage their screen time by introducing friction before opening distracting applications.
+
+Features
+
+* Glassmorphic UI: Premium, dark-themed, glassmorphic design that doesn't obscure your wallpaper.
+* Rising Tide Interception: Set application limits. When opening flagged applications, Kora intercepts you to ask why you are opening the app.
+* Smart App Drawer: Floating search bar, categorized flagged apps, and usage statistics.
+* To-Do Hub: Integrated task manager with daily intentions, progress tracking, and history.
+* Kora Hub: Centralized dashboard to manage AI models, device permissions, and launcher settings.
+
+Privacy
+Kora respects your privacy. All usage statistics are kept strictly on your device. The upcoming offline AI integration runs 100% locally with no internet connection required.
