@@ -1000,7 +1000,7 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
               ),
             ),
             subtitle: Text(
-              'Version 1.1.2+14',
+              'Version 1.1.3+15',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.5),
                 fontSize: 13,
