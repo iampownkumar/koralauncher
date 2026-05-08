@@ -50,7 +50,7 @@ class _TodoHistoryScreenState extends State<TodoHistoryScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: const Color(0xFF050510),
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -61,7 +61,15 @@ class _TodoHistoryScreenState extends State<TodoHistoryScreen> {
           title: const Text('Task History', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w300, fontSize: 18)),
           centerTitle: true,
         ),
-        body: FutureBuilder<Map<DateTime, List<DailySnapshot>>>(
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF0A0A1A), Color(0xFF050510), Color(0xFF080818)],
+            ),
+          ),
+          child: FutureBuilder<Map<DateTime, List<DailySnapshot>>>(
           future: _historyFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -102,6 +110,7 @@ class _TodoHistoryScreenState extends State<TodoHistoryScreen> {
               },
             );
           },
+        ),
         ),
       ),
     );

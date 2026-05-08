@@ -1,10 +1,11 @@
-/// Kora Settings Page — Offline AI management & app settings.
-/// Created by POWNKUMAR A (Founder of Korelium) – 2026-04-28
-/// Last updated – 2026-04-28 14:00 IST
+// Kora Settings Page — Offline AI management & app settings.
+// Created by POWNKUMAR A (Founder of Korelium) – 2026-04-28
+// Last updated – 2026-04-28 14:00 IST
 
 import 'package:flutter/material.dart';
 import '../ai/offline_ai_engine.dart';
 import '../services/storage_service.dart';
+import '../services/native_service.dart';
 
 class KoraSettingsPage extends StatefulWidget {
   const KoraSettingsPage({super.key});
@@ -14,20 +15,34 @@ class KoraSettingsPage extends StatefulWidget {
 }
 
 class _KoraSettingsPageState extends State<KoraSettingsPage>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   final OfflineAIEngine _engine = OfflineAIEngine();
-  late AnimationController _shimmerController;
   final TextEditingController _promptController = TextEditingController();
+
+  bool _isDefaultLauncher = false;
+  bool _hasUsagePerm = false;
+  bool _hasAccessPerm = false;
 
   @override
   void initState() {
     super.initState();
-    _shimmerController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat();
+    WidgetsBinding.instance.addObserver(this);
     _engine.init();
     _engine.addListener(_onEngineUpdate);
+    _checkPermissions();
+  }
+
+  Future<void> _checkPermissions() async {
+    final isDefault = await NativeService.isDefaultLauncher();
+    final hasUsage = await NativeService.hasUsagePermission();
+    final hasAccess = await NativeService.hasAccessibilityPermission();
+    if (mounted) {
+      setState(() {
+        _isDefaultLauncher = isDefault;
+        _hasUsagePerm = hasUsage;
+        _hasAccessPerm = hasAccess;
+      });
+    }
   }
 
   void _onEngineUpdate() {
@@ -35,9 +50,16 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkPermissions();
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _engine.removeListener(_onEngineUpdate);
-    _shimmerController.dispose();
     _promptController.dispose();
     super.dispose();
   }
@@ -45,71 +67,261 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0E1A),
-      body: CustomScrollView(
-        slivers: [
-          // ── App Bar ──────────────────────────────────────
-          SliverAppBar(
-            expandedHeight: 140,
-            pinned: true,
-            backgroundColor: const Color(0xFF0A0E1A),
-            leading: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new,
-                color: Colors.white70,
-                size: 20,
-              ),
-              onPressed: () => Navigator.pop(context),
-            ),
-            flexibleSpace: FlexibleSpaceBar(
-              title: const Text(
-                'Kora Settings',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFF1A1040), Color(0xFF0A0E1A)],
-                  ),
-                ),
-                child: Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 50, right: 20),
-                    child: Icon(
-                      Icons.auto_awesome,
-                      size: 48,
-                      color: Colors.cyanAccent.withOpacity(0.15),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+      backgroundColor: const Color(0xFF050510),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0A0A1A), Color(0xFF050510), Color(0xFF080818)],
           ),
+        ),
+        child: CustomScrollView(
+          slivers: [
+            // ── App Bar ──────────────────────────────────────
+            SliverAppBar(
+              expandedHeight: 140,
+              pinned: true,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(
+                  Icons.arrow_back_ios_new,
+                  color: Colors.white70,
+                  size: 20,
+                ),
+                onPressed: () => Navigator.pop(context),
+              ),
+              flexibleSpace: FlexibleSpaceBar(
+                title: const Text(
+                  'Kora Hub',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                background: Stack(
+                  children: [
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 50, right: 20),
+                        child: Icon(
+                          Icons.settings_suggest_rounded,
+                          size: 64,
+                          color: Colors.cyanAccent.withValues(alpha: 0.08),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
-          // ── Content ──────────────────────────────────────
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _buildAiStatusCard(),
-                const SizedBox(height: 16),
-                _buildModelManagementCard(),
-                const SizedBox(height: 16),
-                _buildPromptTemplatesCard(),
-                const SizedBox(height: 32),
-              ]),
+            // ── Content ──────────────────────────────────────
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _buildSectionHeader('SYSTEM', Icons.phone_android),
+                  _buildLauncherStatusCard(),
+                  const SizedBox(height: 24),
+
+                  _buildSectionHeader(
+                    'PERMISSIONS',
+                    Icons.admin_panel_settings,
+                  ),
+                  _buildPermissionsCard(),
+                  const SizedBox(height: 24),
+
+                  _buildSectionHeader('AI ENGINE', Icons.psychology),
+                  _buildAiStatusCard(),
+                  const SizedBox(height: 16),
+                  if (_engine.isDownloading ||
+                      !_engine.isModelReady ||
+                      _engine.isModelReady)
+                    _buildModelManagementCard(),
+                  const SizedBox(height: 16),
+                  _buildPromptTemplatesCard(),
+                  const SizedBox(height: 24),
+
+                  _buildSectionHeader('ABOUT', Icons.info_outline),
+                  _buildAboutCard(),
+                  const SizedBox(height: 32),
+                ]),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, left: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: Colors.white.withValues(alpha: 0.4)),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.4),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.5,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  // ── Launcher Status ──────────────────────────────────────────
+  Widget _buildLauncherStatusCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color:
+                (_isDefaultLauncher ? Colors.greenAccent : Colors.orangeAccent)
+                    .withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(
+            _isDefaultLauncher ? Icons.home_filled : Icons.home_work_outlined,
+            color: _isDefaultLauncher
+                ? Colors.greenAccent
+                : Colors.orangeAccent,
+            size: 24,
+          ),
+        ),
+        title: const Text(
+          'Default Launcher',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        subtitle: Text(
+          _isDefaultLauncher
+              ? 'Kora is your home app'
+              : 'Tap to set Kora as default',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.5),
+            fontSize: 13,
+          ),
+        ),
+        trailing: _isDefaultLauncher
+            ? const Icon(
+                Icons.check_circle,
+                color: Colors.greenAccent,
+                size: 20,
+              )
+            : const Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.white38,
+                size: 16,
+              ),
+        onTap: () async {
+          if (!_isDefaultLauncher) {
+            await NativeService.openDefaultLauncherSettings();
+            await Future.delayed(const Duration(seconds: 1));
+            _checkPermissions();
+          }
+        },
+      ),
+    );
+  }
+
+  // ── Permissions Card ──────────────────────────────────────────
+  Widget _buildPermissionsCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: Column(
+        children: [
+          _buildPermissionTile(
+            'Usage Access',
+            'Required for app limits and stats',
+            _hasUsagePerm,
+            () async {
+              await NativeService.openUsageSettings();
+              await Future.delayed(const Duration(seconds: 1));
+              _checkPermissions();
+            },
+          ),
+          Divider(height: 1, color: Colors.white.withValues(alpha: 0.05)),
+          _buildPermissionTile(
+            'Accessibility Service',
+            'Required for gatekeeper interception',
+            _hasAccessPerm,
+            () async {
+              await NativeService.openAccessibilitySettings();
+              await Future.delayed(const Duration(seconds: 1));
+              _checkPermissions();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPermissionTile(
+    String title,
+    String subtitle,
+    bool isGranted,
+    VoidCallback onTap,
+  ) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      title: Text(
+        title,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.5),
+          fontSize: 12,
+        ),
+      ),
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: (isGranted ? Colors.greenAccent : Colors.redAccent).withValues(
+            alpha: 0.1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          isGranted ? 'Granted' : 'Missing',
+          style: TextStyle(
+            color: isGranted ? Colors.greenAccent : Colors.redAccent,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      onTap: isGranted ? null : onTap,
     );
   }
 
@@ -125,14 +337,20 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: isReady
-              ? [const Color(0xFF0D2818), const Color(0xFF0A1F14)]
-              : [const Color(0xFF1A1040), const Color(0xFF12122A)],
+              ? [
+                  const Color(0xFF0D2818).withValues(alpha: 0.5),
+                  const Color(0xFF0A1F14).withValues(alpha: 0.5),
+                ]
+              : [
+                  const Color(0xFF1A1040).withValues(alpha: 0.5),
+                  const Color(0xFF12122A).withValues(alpha: 0.5),
+                ],
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isReady
-              ? Colors.greenAccent.withOpacity(0.3)
-              : Colors.cyanAccent.withOpacity(0.15),
+              ? Colors.greenAccent.withValues(alpha: 0.3)
+              : Colors.cyanAccent.withValues(alpha: 0.15),
         ),
       ),
       child: Column(
@@ -144,7 +362,7 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: (isReady ? Colors.greenAccent : Colors.cyanAccent)
-                      .withOpacity(0.1),
+                      .withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -172,7 +390,7 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
                           ? 'On-device inference active'
                           : 'Download model to enable',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
+                        color: Colors.white.withValues(alpha: 0.5),
                         fontSize: 12,
                       ),
                     ),
@@ -182,7 +400,7 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
               if (isReady)
                 Switch(
                   value: isEnabled,
-                  activeColor: Colors.greenAccent,
+                  activeThumbColor: Colors.greenAccent,
                   onChanged: (val) async {
                     await StorageService.setOfflineAiEnabled(val);
                     setState(() {});
@@ -195,9 +413,11 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.redAccent.withOpacity(0.1),
+                color: Colors.redAccent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                border: Border.all(
+                  color: Colors.redAccent.withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 children: [
@@ -232,9 +452,9 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
+        color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,13 +479,11 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
           ),
           const SizedBox(height: 16),
 
-          // Download progress
           if (_engine.isDownloading) ...[
             _buildProgressSection(),
             const SizedBox(height: 16),
           ],
 
-          // Action buttons
           if (!_engine.isModelReady && !_engine.isDownloading)
             _buildDownloadButton()
           else if (_engine.isModelReady)
@@ -286,7 +504,7 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
             Text(
               'Downloading model…',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
+                color: Colors.white.withValues(alpha: 0.7),
                 fontSize: 13,
               ),
             ),
@@ -306,7 +524,7 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
           child: LinearProgressIndicator(
             value: _engine.downloadProgress,
             minHeight: 8,
-            backgroundColor: Colors.white.withOpacity(0.06),
+            backgroundColor: Colors.white.withValues(alpha: 0.06),
             valueColor: const AlwaysStoppedAnimation<Color>(Colors.cyanAccent),
           ),
         ),
@@ -317,14 +535,13 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
   Widget _buildDownloadButton() {
     return Column(
       children: [
-        // RAM warning
         Container(
           padding: const EdgeInsets.all(10),
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: Colors.amber.withOpacity(0.08),
+            color: Colors.amber.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.amber.withOpacity(0.2)),
+            border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
           ),
           child: const Row(
             children: [
@@ -339,14 +556,15 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
             ],
           ),
         ),
-        // Privacy badge
         Container(
           padding: const EdgeInsets.all(10),
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
-            color: Colors.greenAccent.withOpacity(0.06),
+            color: Colors.greenAccent.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.greenAccent.withOpacity(0.15)),
+            border: Border.all(
+              color: Colors.greenAccent.withValues(alpha: 0.15),
+            ),
           ),
           child: const Row(
             children: [
@@ -406,7 +624,6 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
         const SizedBox(height: 8),
         _buildInfoRow(Icons.shield_outlined, 'Privacy', '100% on-device'),
         const SizedBox(height: 14),
-        // Test AI button
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
@@ -415,7 +632,7 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
             label: const Text('Test AI Response'),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.cyanAccent,
-              side: BorderSide(color: Colors.cyanAccent.withOpacity(0.3)),
+              side: BorderSide(color: Colors.cyanAccent.withValues(alpha: 0.3)),
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -432,7 +649,7 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
             label: const Text('Remove Model'),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.redAccent,
-              side: BorderSide(color: Colors.redAccent.withOpacity(0.3)),
+              side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.3)),
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -451,7 +668,10 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
         const SizedBox(width: 10),
         Text(
           '$label: ',
-          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.4),
+            fontSize: 13,
+          ),
         ),
         Text(
           value,
@@ -505,9 +725,9 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
+        color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -545,7 +765,7 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
           Text(
             'Custom questions the AI can ask you at gates.',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.4),
+              color: Colors.white.withValues(alpha: 0.4),
               fontSize: 12,
             ),
           ),
@@ -556,10 +776,10 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 20),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.02),
+                color: Colors.white.withValues(alpha: 0.02),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                   style: BorderStyle.solid,
                 ),
               ),
@@ -567,14 +787,14 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
                 children: [
                   Icon(
                     Icons.lightbulb_outline,
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     size: 28,
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'No custom prompts yet',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.3),
+                      color: Colors.white.withValues(alpha: 0.3),
                       fontSize: 13,
                     ),
                   ),
@@ -595,9 +815,9 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
+        color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
       child: Row(
         children: [
@@ -606,7 +826,7 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
             height: 24,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: Colors.amberAccent.withOpacity(0.1),
+              color: Colors.amberAccent.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
@@ -653,9 +873,9 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
           maxLines: 3,
           decoration: InputDecoration(
             hintText: 'e.g. Is this app helping you right now?',
-            hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
             filled: true,
-            fillColor: Colors.white.withOpacity(0.05),
+            fillColor: Colors.white.withValues(alpha: 0.05),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
@@ -745,6 +965,47 @@ class _KoraSettingsPageState extends State<KoraSettingsPage>
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: const Text('OK', style: TextStyle(color: Colors.cyanAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── About Card ──────────────────────────────────────────────
+  Widget _buildAboutCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: Column(
+        children: [
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 8,
+            ),
+            leading: const Icon(
+              Icons.rocket_launch,
+              color: Colors.cyanAccent,
+              size: 24,
+            ),
+            title: const Text(
+              'Kora Launcher',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            subtitle: Text(
+              'Version 1.1.2+14',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 13,
+              ),
+            ),
           ),
         ],
       ),

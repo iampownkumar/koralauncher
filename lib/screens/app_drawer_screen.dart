@@ -1,13 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:installed_apps/app_info.dart';
-import 'package:installed_apps/app_category.dart';
-import 'package:installed_apps/platform_type.dart';
 import '../models/app_entry.dart';
 import '../services/launcher_service.dart';
 import '../services/storage_service.dart';
 import '../services/usage_service.dart';
 import '../services/native_service.dart';
-import '../widgets/app_list_item.dart';
 import '../widgets/app_long_press_menu.dart';
 import '../widgets/accessibility_disclosure_sheet.dart';
 import 'interception_screen.dart';
@@ -20,7 +17,7 @@ class AppDrawerScreen extends StatefulWidget {
 }
 
 class _AppDrawerScreenState extends State<AppDrawerScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   List<AppEntry> _apps = [];
   List<AppEntry> _filteredApps = [];
   final TextEditingController _searchController = TextEditingController();
@@ -28,10 +25,22 @@ class _AppDrawerScreenState extends State<AppDrawerScreen>
   final ScrollController _scrollController = ScrollController();
   bool _hasUsagePermission = true;
 
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 250),
+      vsync: this,
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    );
+    _fadeController.forward();
     _checkPermissionsAndLoad();
     _searchController.addListener(_filterApps);
     // Request focus for search bar when drawer opens
@@ -58,6 +67,7 @@ class _AppDrawerScreenState extends State<AppDrawerScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _fadeController.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
     _scrollController.dispose();
@@ -174,49 +184,59 @@ class _AppDrawerScreenState extends State<AppDrawerScreen>
         child: Scaffold(
           resizeToAvoidBottomInset: false, // Prevent layout jumps
           backgroundColor: Colors.transparent,
-          body: Stack(
-            children: [
-              // Dark translucent background.
-              // NOTE: BackdropFilter with blur(sigma 15) was removed because
-              // it is extremely GPU-intensive and causes massive frame drops
-              // during system gesture animations (Home swipe-up, Recents).
-              // A simple dark overlay gives a similar visual at near-zero cost.
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black.withOpacity(0.85),
-                ),
-              ),
-              SafeArea(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 16),
-                    _buildSearchField(),
-                    Expanded(
-                      child: NotificationListener<ScrollNotification>(
-                        onNotification: (notification) {
-                          // Detect when user is at the top AND pulls down (overscroll)
-                          // Using a lower threshold (-30) and capturing all scroll notification types
-                          // for immediate, snappy closure.
-                          if (notification.metrics.pixels <= -30) {
-                            _searchFocusNode.unfocus();
-                            Navigator.maybePop(context);
-                            return true;
-                          }
-                          return false;
-                        },
-                        child: _buildAppList(),
+          body: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Stack(
+              children: [
+                // Dark translucent background with subtle blur
+                Positioned.fill(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            const Color(0xFF0A0A1A).withValues(alpha: 0.95),
+                            const Color(0xFF050510).withValues(alpha: 0.92),
+                          ],
+                        ),
                       ),
                     ),
-                    // Space for keyboard when resizeToAvoidBottomInset is false
-                    Padding(
-                      padding: EdgeInsets.only(
-                        bottom: MediaQuery.of(context).viewInsets.bottom,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+                SafeArea(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 12),
+                      _buildSearchField(),
+                      if (_searchController.text.isEmpty) _buildQuickStats(),
+                      Expanded(
+                        child: NotificationListener<ScrollNotification>(
+                          onNotification: (notification) {
+                            // Detect when user is at the top AND pulls down (overscroll)
+                            if (notification.metrics.pixels <= -30) {
+                              _searchFocusNode.unfocus();
+                              Navigator.maybePop(context);
+                              return true;
+                            }
+                            return false;
+                          },
+                          child: _buildAppList(),
+                        ),
+                      ),
+                      // Space for keyboard when resizeToAvoidBottomInset is false
+                      Padding(
+                        padding: EdgeInsets.only(
+                          bottom: MediaQuery.of(context).viewInsets.bottom,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -225,118 +245,368 @@ class _AppDrawerScreenState extends State<AppDrawerScreen>
 
   Widget _buildSearchField() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-      child: TextField(
-        controller: _searchController,
-        focusNode: _searchFocusNode,
-        style: Theme.of(context).textTheme.bodyLarge,
-        onSubmitted: (_) {
-          if (_filteredApps.isNotEmpty) {
-            _openApp(_filteredApps.first);
-          }
-        },
-        decoration: InputDecoration(
-          hintText: 'Search apps...',
-          prefixIcon: const Icon(Icons.search, color: Colors.white54),
-          filled: true,
-          fillColor: Colors.white.withOpacity(0.05),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.08),
+          ),
+        ),
+        child: TextField(
+          controller: _searchController,
+          focusNode: _searchFocusNode,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+          ),
+          onSubmitted: (_) {
+            if (_filteredApps.isNotEmpty) {
+              _openApp(_filteredApps.first);
+            }
+          },
+          decoration: InputDecoration(
+            hintText: 'Search apps...',
+            hintStyle: TextStyle(
+              color: Colors.white.withValues(alpha: 0.25),
+              fontWeight: FontWeight.w400,
+            ),
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              color: Colors.white.withValues(alpha: 0.3),
+              size: 20,
+            ),
+            suffixIcon: _searchController.text.isNotEmpty
+                ? GestureDetector(
+                    onTap: () {
+                      _searchController.clear();
+                      _searchFocusNode.requestFocus();
+                    },
+                    child: Icon(
+                      Icons.close_rounded,
+                      color: Colors.white.withValues(alpha: 0.3),
+                      size: 18,
+                    ),
+                  )
+                : null,
+            filled: false,
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
         ),
       ),
     );
   }
 
+  /// Quick stats bar showing total apps and flagged count
+  Widget _buildQuickStats() {
+    final flaggedCount = StorageService.getFlaggedApps().length;
+    final totalUsage = _hasUsagePermission
+        ? UsageService.getVisibleTotalUsage(minRoundedMinutes: 1)
+        : Duration.zero;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+      child: Row(
+        children: [
+          _statChip(
+            '${_apps.length} apps',
+            Icons.apps_rounded,
+            Colors.white.withValues(alpha: 0.4),
+          ),
+          const SizedBox(width: 8),
+          if (flaggedCount > 0)
+            _statChip(
+              '$flaggedCount flagged',
+              Icons.waves,
+              const Color(0xFF06B6D4),
+            ),
+          const SizedBox(width: 8),
+          if (_hasUsagePermission && totalUsage.inMinutes > 0)
+            _statChip(
+              UsageService.formatDuration(totalUsage),
+              Icons.access_time_rounded,
+              Colors.white.withValues(alpha: 0.4),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statChip(String label, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAppList() {
-    if (_apps.isEmpty) return const Center(child: CircularProgressIndicator());
+    if (_apps.isEmpty) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF06B6D4)),
+      );
+    }
+
+    // Separate flagged apps to show at top when not searching
+    final isSearching = _searchController.text.isNotEmpty;
+    List<AppEntry> displayApps = _filteredApps;
+    int flaggedSectionCount = 0;
+
+    if (!isSearching) {
+      final flagged = _filteredApps
+          .where((a) => !a.isShortcut && StorageService.isAppFlagged(a.packageName))
+          .toList();
+      final unflagged = _filteredApps
+          .where((a) => a.isShortcut || !StorageService.isAppFlagged(a.packageName))
+          .toList();
+      flaggedSectionCount = flagged.length;
+      displayApps = [...flagged, ...unflagged];
+    }
 
     return ListView.builder(
       controller: _scrollController,
       physics: const BouncingScrollPhysics(
         parent: AlwaysScrollableScrollPhysics(),
-      ), // Ensure we can overscroll
-      itemCount: _filteredApps.length,
+      ),
+      itemCount: displayApps.length + (flaggedSectionCount > 0 ? 2 : 0),
       padding: const EdgeInsets.only(bottom: 32),
       itemBuilder: (context, index) {
-        final app = _filteredApps[index];
-        final isFlagged = !app.isShortcut && StorageService.isAppFlagged(app.packageName);
-        final usage = (!app.isShortcut && _hasUsagePermission)
-            ? UsageService.getAppUsage(app.packageName)
-            : Duration.zero;
-        return AppListItem(
-          app: AppInfo(
-            name: app.name,
-            packageName: app.packageName,
-            icon: app.icon,
-            versionName: '',
-            versionCode: 0,
-            platformType: PlatformType.nativeOrOthers,
-            installedTimestamp: 0,
-            isSystemApp: false,
-            isLaunchableApp: true,
-            category: AppCategory.undefined,
-          ),
-          isFlagged: isFlagged,
-          usage: usage,
-          onFlagTap: app.isShortcut
-              ? null // shortcuts can't be flagged for Rising Tide
-              : () async {
-                  final hasAccess = await NativeService.hasAccessibilityPermission();
-                  if (!hasAccess) {
-                    if (!context.mounted) return;
-                    // ignore: use_build_context_synchronously
-                    await AccessibilityDisclosureSheet.show(context);
-                    if (mounted) setState(() {});
-                    return;
-                  }
-                  await StorageService.toggleFlaggedApp(app.packageName);
-                  if (mounted) setState(() {});
-                },
-          onTap: () => _openApp(app),
-          onLongPress: () {
-            if (app.isShortcut) {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Remove Shortcut'),
-                  content: Text('Remove ${app.name} from your apps?'),
-                  backgroundColor: const Color(0xFF0F172A),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  actions: [
-                    TextButton(
-                      style: TextButton.styleFrom(foregroundColor: Colors.white54),
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        final String id = app.packageName.replaceFirst('shortcut_', '');
-                        await NativeService.removeShortcut(id);
-                        _refreshData();
-                      },
-                      child: const Text('Remove'),
-                    ),
-                  ],
-                ),
-              );
-            } else {
-              final appInfo = LauncherService.cachedApps
-                  .firstWhere((a) => a.packageName == app.packageName);
-              showAppLongPressMenu(
-                context,
-                appInfo,
-                onChanged: () {
-                  if (mounted) setState(() {});
-                },
-              );
-            }
-          },
-        );
+        // Section headers for flagged apps
+        if (flaggedSectionCount > 0) {
+          if (index == 0) {
+            return _buildSectionHeader('FLAGGED', const Color(0xFF06B6D4));
+          }
+          if (index == flaggedSectionCount + 1) {
+            return _buildSectionHeader('ALL APPS', Colors.white.withValues(alpha: 0.3));
+          }
+          // Adjust index for actual app data
+          final appIndex = index <= flaggedSectionCount
+              ? index - 1
+              : index - 2;
+          if (appIndex >= displayApps.length) return const SizedBox.shrink();
+          return _buildAppTile(displayApps[appIndex]);
+        }
+
+        return _buildAppTile(displayApps[index]);
       },
     );
+  }
+
+  Widget _buildSectionHeader(String title, Color color) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 12, 28, 4),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppTile(AppEntry app) {
+    final isFlagged =
+        !app.isShortcut && StorageService.isAppFlagged(app.packageName);
+    final usage = (!app.isShortcut && _hasUsagePermission)
+        ? UsageService.getAppUsage(app.packageName)
+        : Duration.zero;
+    final usageMinutes = (usage.inMilliseconds + 30000) ~/ 60000;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      decoration: BoxDecoration(
+        color: isFlagged
+            ? const Color(0xFF06B6D4).withValues(alpha: 0.06)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        border: isFlagged
+            ? Border.all(
+                color: const Color(0xFF06B6D4).withValues(alpha: 0.15),
+              )
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openApp(app),
+          onLongPress: () => _handleLongPress(app),
+          borderRadius: BorderRadius.circular(14),
+          splashColor: const Color(0xFF06B6D4).withValues(alpha: 0.08),
+          highlightColor: Colors.white.withValues(alpha: 0.03),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                // App icon with subtle shadow
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(11),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(11),
+                    child: Hero(
+                      tag: app.packageName,
+                      child: app.icon != null
+                          ? Image.memory(app.icon!, fit: BoxFit.cover)
+                          : const Icon(Icons.apps, color: Colors.white38),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+
+                // App name
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        app.name,
+                        style: TextStyle(
+                          color: isFlagged
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.85),
+                          fontSize: 14,
+                          fontWeight:
+                              isFlagged ? FontWeight.w600 : FontWeight.w400,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (usageMinutes > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            _formatUsage(usage),
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.25),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                // Flag indicator
+                if (!app.isShortcut)
+                  GestureDetector(
+                    onTap: () => _handleFlagTap(app),
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.waves,
+                        size: 20,
+                        color: isFlagged
+                            ? const Color(0xFF06B6D4)
+                            : Colors.white.withValues(alpha: 0.12),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleFlagTap(AppEntry app) async {
+    final hasAccess = await NativeService.hasAccessibilityPermission();
+    if (!hasAccess) {
+      if (!context.mounted) return;
+      // ignore: use_build_context_synchronously
+      await AccessibilityDisclosureSheet.show(context);
+      if (mounted) setState(() {});
+      return;
+    }
+    await StorageService.toggleFlaggedApp(app.packageName);
+    if (mounted) setState(() {});
+  }
+
+  void _handleLongPress(AppEntry app) {
+    if (app.isShortcut) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Remove Shortcut'),
+          content: Text('Remove ${app.name} from your apps?'),
+          backgroundColor: const Color(0xFF0F172A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          actions: [
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.white54),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+              onPressed: () async {
+                Navigator.pop(context);
+                final String id =
+                    app.packageName.replaceFirst('shortcut_', '');
+                await NativeService.removeShortcut(id);
+                _refreshData();
+              },
+              child: const Text('Remove'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      final appInfo = LauncherService.cachedApps
+          .firstWhere((a) => a.packageName == app.packageName);
+      showAppLongPressMenu(
+        context,
+        appInfo,
+        onChanged: () {
+          if (mounted) setState(() {});
+        },
+      );
+    }
+  }
+
+  String _formatUsage(Duration d) {
+    final totalMinutes = (d.inMilliseconds + 30000) ~/ 60000;
+    if (totalMinutes <= 0) return "";
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    if (hours > 0) return "${hours}h ${minutes}m today";
+    return "${minutes}m today";
   }
 }

@@ -7,13 +7,11 @@ import '../services/todo_service.dart';
 import 'app_drawer_screen.dart';
 import '../widgets/goal_setter.dart';
 import 'todo_screen.dart';
-import 'usage_dashboard_screen.dart';
-import 'tide_pool_screen.dart';
-import 'permissions_screen.dart';
+import 'unified_dashboard_screen.dart';
+import 'permissions_screen.dart';  // kept — still used by Settings Hub
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
 import '../wallpaper/wallpaper_service.dart';
-import 'kora_settings_page.dart';
 
 import 'package:upgrader/upgrader.dart';
 import 'package:intl/intl.dart';
@@ -131,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           PageRouteBuilder(
                             pageBuilder:
                                 (context, animation, secondaryAnimation) =>
-                                    const TidePoolScreen(),
+                                    const UnifiedDashboardScreen(),
                             transitionDuration: Duration.zero,
                             reverseTransitionDuration: Duration.zero,
                           ),
@@ -155,38 +153,42 @@ class _HomeScreenState extends State<HomeScreen> {
                     height: double.infinity,
                     child: SafeArea(
                       child: SingleChildScrollView(
-                        child: SizedBox(
-                          height:
-                              MediaQuery.of(context).size.height -
-                              MediaQuery.of(context).padding.top -
-                              MediaQuery.of(context).padding.bottom,
-                          child: Column(
-                            children: [
-                              HomeBanners(controller: _controller),
-                              if (StorageService.hasCompletedOnboarding() &&
-                                  !_controller.isDefaultLauncher &&
-                                  !_controller.hideDefaultLauncherBanner)
-                                _buildDefaultLauncherBanner(),
-                              _buildTopInfoBar(),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight:
+                                MediaQuery.of(context).size.height -
+                                MediaQuery.of(context).padding.top -
+                                MediaQuery.of(context).padding.bottom,
+                          ),
+                          child: IntrinsicHeight(
+                            child: Column(
+                              children: [
+                                HomeBanners(controller: _controller),
+                                if (StorageService.hasCompletedOnboarding() &&
+                                    !_controller.isDefaultLauncher &&
+                                    !_controller.hideDefaultLauncherBanner)
+                                  _buildDefaultLauncherBanner(),
+                                _buildTopInfoBar(),
 
-                              const SizedBox(height: 16),
+                                const SizedBox(height: 16),
 
-                              if (!_controller.showGoalSetter) ...[
-                                _buildTinyTodoChip(),
+                                if (!_controller.showGoalSetter) ...[
+                                  _buildTinyTodoChip(),
+                                ],
+
+                                const Spacer(flex: 3),
+
+                                _buildTimeAndDate(),
+                                const SizedBox(
+                                  height: 20,
+                                ), //change here for space the time  widget
+
+                                _buildQuickAccessDock(),
+                                const SizedBox(height: 7),
+
+                                _buildSwipeHint(),
                               ],
-
-                              const Spacer(flex: 3),
-
-                              _buildTimeAndDate(),
-                              const SizedBox(
-                                height: 20,
-                              ), //change here for space the time  widget
-
-                              _buildQuickAccessDock(),
-                              const SizedBox(height: 7),
-
-                              _buildSwipeHint(),
-                            ],
+                            ),
                           ),
                         ),
                       ),
@@ -416,14 +418,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildSwipeHint() {
     return GestureDetector(
       onTap: _openAppDrawer,
-      onLongPress: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const PermissionsAndPrivacyScreen(),
-          ),
-        ).then((_) => _controller.refreshHomeState());
-      },
       child: const Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -510,6 +504,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildUsageStats() {
     final hasPermission = _controller.hasUsagePermission;
     final totalUsage = UsageService.getVisibleTotalUsage(minRoundedMinutes: 1);
+    final flaggedCount = StorageService.getFlaggedApps().length;
 
     return GestureDetector(
       onTap: () {
@@ -517,7 +512,7 @@ class _HomeScreenState extends State<HomeScreen> {
           context,
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
-                const UsageDashboardScreen(),
+                const UnifiedDashboardScreen(),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
                   return FadeTransition(opacity: animation, child: child);
@@ -529,13 +524,13 @@ class _HomeScreenState extends State<HomeScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         decoration: BoxDecoration(
           color: hasPermission
-              ? Colors.black.withOpacity(0.3)
-              : Colors.redAccent.withOpacity(0.2),
+              ? Colors.black.withValues(alpha: 0.3)
+              : Colors.redAccent.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: hasPermission
-                ? Colors.white.withOpacity(0.2)
-                : Colors.redAccent.withOpacity(0.4),
+                ? Colors.white.withValues(alpha: 0.2)
+                : Colors.redAccent.withValues(alpha: 0.4),
           ),
         ),
         child: Row(
@@ -555,6 +550,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            if (hasPermission && flaggedCount > 0) ...[
+              Container(
+                margin: const EdgeInsets.only(left: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF06B6D4).withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '🌊$flaggedCount',
+                  style: const TextStyle(fontSize: 9),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -604,22 +613,6 @@ class _HomeScreenState extends State<HomeScreen> {
               category: 'android.intent.category.APP_GALLERY',
               flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
             ).launch(),
-          ),
-          _buildShortcutIcon(
-            icon: Icons.settings_outlined,
-            onTap: () {
-              Navigator.push(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) =>
-                      const KoraSettingsPage(),
-                  transitionsBuilder:
-                      (context, animation, secondaryAnimation, child) {
-                    return FadeTransition(opacity: animation, child: child);
-                  },
-                ),
-              ).then((_) => _controller.refreshHomeState());
-            },
           ),
         ],
       ),
