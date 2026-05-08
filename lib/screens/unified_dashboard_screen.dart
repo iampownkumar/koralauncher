@@ -12,6 +12,7 @@ import '../widgets/app_long_press_menu.dart';
 import '../widgets/accessibility_disclosure_sheet.dart';
 import '../widgets/permission_gate_card.dart';
 import 'interception_screen.dart';
+import 'kora_settings_page.dart';
 
 
 /// Unified dashboard that merges Usage Dashboard + Tide Pool (Rising Tide)
@@ -181,7 +182,26 @@ class _UnifiedDashboardScreenState extends State<UnifiedDashboardScreen>
               ),
             ),
           ),
-          const SizedBox(width: 48),
+          IconButton(
+            icon: Icon(
+              Icons.settings_outlined,
+              color: Colors.white.withValues(alpha: 0.5),
+              size: 20,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      const KoraSettingsPage(),
+                  transitionsBuilder:
+                      (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(opacity: animation, child: child);
+                  },
+                ),
+              );
+            },
+          ),
         ],
       ),
     );

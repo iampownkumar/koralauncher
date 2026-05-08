@@ -8,11 +8,10 @@ import 'app_drawer_screen.dart';
 import '../widgets/goal_setter.dart';
 import 'todo_screen.dart';
 import 'unified_dashboard_screen.dart';
-import 'permissions_screen.dart';
+import 'permissions_screen.dart';  // kept — still used by Settings Hub
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
 import '../wallpaper/wallpaper_service.dart';
-import 'kora_settings_page.dart';
 
 import 'package:upgrader/upgrader.dart';
 import 'package:intl/intl.dart';
@@ -419,14 +418,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildSwipeHint() {
     return GestureDetector(
       onTap: _openAppDrawer,
-      onLongPress: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const PermissionsAndPrivacyScreen(),
-          ),
-        ).then((_) => _controller.refreshHomeState());
-      },
       child: const Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -622,22 +613,6 @@ class _HomeScreenState extends State<HomeScreen> {
               category: 'android.intent.category.APP_GALLERY',
               flags: [Flag.FLAG_ACTIVITY_NEW_TASK],
             ).launch(),
-          ),
-          _buildShortcutIcon(
-            icon: Icons.settings_outlined,
-            onTap: () {
-              Navigator.push(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) =>
-                      const KoraSettingsPage(),
-                  transitionsBuilder:
-                      (context, animation, secondaryAnimation, child) {
-                    return FadeTransition(opacity: animation, child: child);
-                  },
-                ),
-              ).then((_) => _controller.refreshHomeState());
-            },
           ),
         ],
       ),
